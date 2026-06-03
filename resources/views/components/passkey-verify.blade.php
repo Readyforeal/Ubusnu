@@ -48,7 +48,7 @@
             <div class="grid gap-2">
                 <x-button
                     label="{{ $label }}"
-                    icon="o-finger-print"
+                    icon="lucide.fingerprint"
                     class="btn-outline w-full"
                     x-on:click="verify()"
                     x-bind:disabled="loading"

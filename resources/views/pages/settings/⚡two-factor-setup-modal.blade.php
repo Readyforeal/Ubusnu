@@ -199,7 +199,7 @@ new class extends Component {
             </div>
         @else
             @error('setupData')
-                <x-alert title="{{ $message }}" icon="o-x-circle" class="alert-error" />
+                <x-alert title="{{ $message }}" icon="lucide.x-circle" class="alert-error" />
             @enderror
 
             <div class="flex justify-center">
@@ -267,8 +267,8 @@ new class extends Component {
                                 @click="copy()"
                                 class="px-3 transition-colors border-l cursor-pointer border-base-300 hover:bg-base-200"
                             >
-                                <x-icon x-show="!copied" name="o-document-duplicate" class="size-5" />
-                                <x-icon x-show="copied" name="o-check" class="size-5 text-success" />
+                                <x-icon x-show="!copied" name="lucide.copy" class="size-5" />
+                                <x-icon x-show="copied" name="lucide.check" class="size-5 text-success" />
                             </button>
                         @endempty
                     </div>

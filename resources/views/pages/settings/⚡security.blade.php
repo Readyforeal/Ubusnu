@@ -273,7 +273,7 @@ new #[Title('Security settings')] class extends Component {
                             <div class="flex items-center justify-between p-4 {{ ! $loop->last ? 'border-b border-base-300' : '' }}">
                                 <div class="flex items-center gap-4">
                                     <div class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-base-200">
-                                        <x-icon name="o-key" class="size-5 text-base-content/50" />
+                                        <x-icon name="lucide.key" class="size-5 text-base-content/50" />
                                     </div>
                                     <div class="space-y-1">
                                         <div class="flex items-center gap-2.5">
@@ -293,7 +293,7 @@ new #[Title('Security settings')] class extends Component {
                                 </div>
 
                                 <x-button
-                                    icon="o-trash"
+                                    icon="lucide.trash"
                                     class="btn-ghost btn-sm text-error"
                                     wire:click="confirmDelete({{ $passkey['id'] }})"
                                 />
@@ -301,7 +301,7 @@ new #[Title('Security settings')] class extends Component {
                         @empty
                             <div class="p-8 text-center">
                                 <div class="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-base-200">
-                                    <x-icon name="o-key" class="size-7 text-base-content/40" />
+                                    <x-icon name="lucide.key" class="size-7 text-base-content/40" />
                                 </div>
                                 <p class="font-medium">{{ __('No passkeys yet') }}</p>
                                 <p class="mt-1 text-sm text-base-content/60">{{ __('Add a passkey to sign in without a password') }}</p>

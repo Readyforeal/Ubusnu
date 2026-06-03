@@ -52,7 +52,7 @@ new class extends Component {
 >
     <div class="px-6 space-y-2">
         <div class="flex items-center gap-2">
-            <x-icon name="o-lock-closed" class="size-4" />
+            <x-icon name="lucide.lock" class="size-4" />
             <h3 class="text-lg font-semibold">{{ __('2FA recovery codes') }}</h3>
         </div>
         <p class="text-sm text-base-content/60">
@@ -65,7 +65,7 @@ new class extends Component {
             <x-button
                 x-show="!showRecoveryCodes"
                 label="{{ __('View recovery codes') }}"
-                icon="o-eye"
+                icon="lucide.eye"
                 class="btn-primary"
                 @click="showRecoveryCodes = true;"
                 aria-expanded="false"
@@ -75,7 +75,7 @@ new class extends Component {
             <x-button
                 x-show="showRecoveryCodes"
                 label="{{ __('Hide recovery codes') }}"
-                icon="o-eye-slash"
+                icon="lucide.eye-off"
                 class="btn-primary"
                 @click="showRecoveryCodes = false"
                 aria-expanded="true"
@@ -86,7 +86,7 @@ new class extends Component {
                 <x-button
                     x-show="showRecoveryCodes"
                     label="{{ __('Regenerate codes') }}"
-                    icon="o-arrow-path"
+                    icon="lucide.refresh-cw"
                     wire:click="regenerateRecoveryCodes"
                 />
             @endif
@@ -101,7 +101,7 @@ new class extends Component {
         >
             <div class="mt-3 space-y-3">
                 @error('recoveryCodes')
-                    <x-alert title="{{ $message }}" icon="o-x-circle" class="alert-error" />
+                    <x-alert title="{{ $message }}" icon="lucide.x-circle" class="alert-error" />
                 @enderror
 
                 @if (filled($recoveryCodes))

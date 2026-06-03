@@ -48,7 +48,7 @@
 
     <template x-if="supported && !showForm">
         <div>
-            <x-button label="{{ __('Add passkey') }}" icon="o-plus" class="btn-primary" x-on:click="showForm = true" />
+            <x-button label="{{ __('Add passkey') }}" icon="lucide.plus" class="btn-primary" x-on:click="showForm = true" />
         </div>
     </template>
 

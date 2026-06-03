@@ -12,7 +12,7 @@
             </x-slot:brand>
             <x-slot:actions>
                 <label for="main-drawer" class="lg:hidden mr-3">
-                    <x-icon name="o-bars-3" class="cursor-pointer" />
+                    <x-icon name="lucide.menu" class="cursor-pointer" />
                 </label>
             </x-slot:actions>
         </x-nav>
@@ -20,35 +20,42 @@
         {{-- MAIN --}}
         <x-main full-width>
             {{-- SIDEBAR --}}
-            <x-slot:sidebar drawer="main-drawer" collapsible class="bg-base-100 lg:bg-inherit">
+            <x-slot:sidebar drawer="main-drawer" collapsible >
 
-                {{-- BRAND --}}
-                <x-app-logo class="ml-5 pt-5" />
+                <div class="flex flex-col h-full">
+                    {{-- BRAND --}}
+                    <x-app-logo class="ml-5 pt-5" />
 
-                {{-- MENU --}}
-                <x-menu activate-by-route>
+                    {{-- MENU --}}
+                    <x-menu title="" activate-by-route class="flex-1">
 
+                        <x-menu-item title="{{ __('Dashboard') }}" icon="lucide.layout-dashboard" link="{{ route('dashboard') }}" wire:navigate />
+
+                    </x-menu>
+
+                    <x-menu title="">
+                        @if($user = auth()->user())
+
+                            <div class="flex items-center justify-between pl-3 flex-nowrap overflow-hidden">
+                                <x-avatar class="my-1" placeholder="{{ collect(explode(' ', $user->name))->map(fn ($part) => strtoupper(mb_substr($part, 0, 1)))->take(2)->join('') }}">
+                                    <x-slot:title class="mary-hideable text-nowrap">{{ $user->name }}</x-slot:title>
+                                </x-avatar>
+
+                                <span class="mary-hideable shrink-0">
+                                    <span class="flex gap-1 items-center">
+                                        <form method="POST" action="{{ route('logout') }}" class="flex">
+                                            @csrf
+                                            <x-button icon="lucide.log-out" class="btn-circle btn-ghost btn-sm" tooltip-left="Logoff" type="submit" />
+                                        </form>
+                                        <x-button icon="lucide.settings" class="btn-circle btn-ghost btn-sm" tooltip-left="Settings" no-wire-navigate link="/settings"></x-button>
+                                    </span>
+                                </span>
+                            </div>
+
+                        @endif
+                    </x-menu>
                     {{-- User --}}
-                    @if($user = auth()->user())
-                        <x-menu-separator />
-
-                        <x-list-item :item="$user" value="name" sub-value="email" no-separator no-hover class="-mx-2 !-my-2 rounded">
-                            <x-slot:actions>
-                                <x-button icon="o-power" class="btn-circle btn-ghost btn-xs" tooltip-left="logoff" no-wire-navigate link="/logout" />
-                            </x-slot:actions>
-                        </x-list-item>
-
-                        <x-menu-separator />
-                    @endif
-
-                    <x-menu-item title="{{ __('Dashboard') }}" icon="o-home" link="{{ route('dashboard') }}" wire:navigate />
-
-                    <x-menu-sub title="{{ __('Settings') }}" icon="o-cog-6-tooth">
-                        <x-menu-item title="{{ __('Profile') }}" icon="o-user" link="{{ route('profile.edit') }}" wire:navigate />
-                        <x-menu-item title="{{ __('Security') }}" icon="o-shield-check" link="{{ route('security.edit') }}" wire:navigate />
-                        <x-menu-item title="{{ __('Appearance') }}" icon="o-swatch" link="{{ route('appearance.edit') }}" wire:navigate />
-                    </x-menu-sub>
-                </x-menu>
+                </div>
             </x-slot:sidebar>
 
             {{-- The $slot goes here --}}

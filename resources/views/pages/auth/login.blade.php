@@ -22,7 +22,7 @@
                 inline
             />
 
-            <div class="relative">
+            <div>
                 <x-input
                     name="password"
                     label="{{ __('Password') }}"
@@ -34,9 +34,11 @@
                 />
 
                 @if (Route::has('password.request'))
-                    <a href="{{ route('password.request') }}" class="absolute top-0 end-0 text-sm link link-primary" wire:navigate>
-                        {{ __('Forgot your password?') }}
-                    </a>
+                    <div class="flex justify-end mt-1">
+                        <a href="{{ route('password.request') }}" class="text-sm link link-primary" wire:navigate>
+                            {{ __('Forgot your password?') }}
+                        </a>
+                    </div>
                 @endif
             </div>
 
