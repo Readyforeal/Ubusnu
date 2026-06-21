@@ -2,6 +2,8 @@
 
 use App\Livewire\Imports\Wizard;
 use App\Models\Account;
+use App\Models\ImportBatch;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -66,4 +68,70 @@ it('saves the mapping to the account and proceeds to preview', function () {
         ->assertSet('step', 'preview');
 
     expect($account->fresh()->import_profile['date_column'])->toBe('Date');
+});
+
+it('shows preview rows after mapping', function () {
+    $account = Account::factory()->create();
+    $file = UploadedFile::fake()->createWithContent('sample.csv', file_get_contents(base_path('tests/Fixtures/csv/sample-standard.csv')));
+
+    $component = Livewire::test(Wizard::class)
+        ->set('accountId', $account->id)
+        ->set('upload', $file)
+        ->call('proceedFromUpload')
+        ->set('mapDateColumn', 'Date')
+        ->set('mapDateFormat', 'm/d/Y')
+        ->set('mapDescriptionColumn', 'Description')
+        ->set('mapAmountColumn', 'Amount')
+        ->set('mapHasHeader', true)
+        ->call('proceedFromMap');
+
+    expect($component->get('previewRows'))->toHaveCount(3);
+    expect($component->get('previewRows')[0]['description'])->toBe('Coffee Shop');
+});
+
+it('commits the import and creates a batch', function () {
+    $account = Account::factory()->create();
+    $file = UploadedFile::fake()->createWithContent('sample.csv', file_get_contents(base_path('tests/Fixtures/csv/sample-standard.csv')));
+
+    Livewire::test(Wizard::class)
+        ->set('accountId', $account->id)
+        ->set('upload', $file)
+        ->call('proceedFromUpload')
+        ->set('mapDateColumn', 'Date')
+        ->set('mapDateFormat', 'm/d/Y')
+        ->set('mapDescriptionColumn', 'Description')
+        ->set('mapAmountColumn', 'Amount')
+        ->set('mapHasHeader', true)
+        ->call('proceedFromMap')
+        ->call('commit')
+        ->assertSet('step', 'done');
+
+    expect(ImportBatch::count())->toBe(1);
+    expect(Transaction::count())->toBe(3);
+});
+
+it('lets the user toggle a duplicate row to be force-included', function () {
+    $account = Account::factory()->create();
+    Transaction::factory()->forAccount($account)->create([
+        'occurred_on' => '2026-06-01',
+        'description' => 'Coffee Shop',
+        'amount_cents' => -450,
+    ]);
+    $file = UploadedFile::fake()->createWithContent('sample.csv', file_get_contents(base_path('tests/Fixtures/csv/sample-standard.csv')));
+
+    $component = Livewire::test(Wizard::class)
+        ->set('accountId', $account->id)
+        ->set('upload', $file)
+        ->call('proceedFromUpload')
+        ->set('mapDateColumn', 'Date')
+        ->set('mapDateFormat', 'm/d/Y')
+        ->set('mapDescriptionColumn', 'Description')
+        ->set('mapAmountColumn', 'Amount')
+        ->set('mapHasHeader', true)
+        ->call('proceedFromMap');
+
+    expect($component->get('previewRows')[0]['status'])->toBe('duplicate');
+
+    $component->call('toggleRow', 0);
+    expect($component->get('previewRows')[0]['status'])->toBe('new');
 });
