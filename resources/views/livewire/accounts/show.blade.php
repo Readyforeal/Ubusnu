@@ -7,7 +7,7 @@
         </div>
     </div>
 
-    <div class="h-48 rounded-xl border border-base-300 bg-base-100 flex items-center justify-center opacity-50">Chart coming in next task</div>
+    <livewire:charts.balance-chart :account-id="$account->id" :key="'chart-acct-'.$account->id" />
 
     <h2 class="text-lg font-semibold mt-6">{{ __('Transactions') }}</h2>
 
