@@ -135,3 +135,28 @@ it('lets the user toggle a duplicate row to be force-included', function () {
     $component->call('toggleRow', 0);
     expect($component->get('previewRows')[0]['status'])->toBe('new');
 });
+
+it('imports a CSV with no header row using positional column indices', function () {
+    $account = Account::factory()->create();
+    $contents = "04/01/2026,-12.33,26091001,5589 R & K COUNTRY STORE MEAD NE\n".
+                "04/02/2026,-50.00,26091002,Another Merchant\n";
+    $file = UploadedFile::fake()->createWithContent('noheader.csv', $contents);
+
+    Livewire::test(Wizard::class)
+        ->set('accountId', $account->id)
+        ->set('upload', $file)
+        ->call('proceedFromUpload')
+        ->set('mapHasHeader', false)
+        ->set('mapDateColumn', '0')
+        ->set('mapDateFormat', 'm/d/Y')
+        ->set('mapDescriptionColumn', '3')
+        ->set('mapAmountColumn', '1')
+        ->call('proceedFromMap')
+        ->assertSet('step', 'preview')
+        ->call('commit')
+        ->assertSet('step', 'done');
+
+    expect($account->fresh()->import_profile['has_header'])->toBeFalse();
+    expect(Transaction::count())->toBe(2);
+    expect(Transaction::first()->occurred_on->format('Y-m-d'))->toBe('2026-04-01');
+});

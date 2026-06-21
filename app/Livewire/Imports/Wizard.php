@@ -122,6 +122,26 @@ class Wizard extends Component
         $this->previewRows[$index]['status'] = $current === 'duplicate' ? 'new' : 'duplicate';
     }
 
+    /**
+     * @return array<int, array{id: string, name: string}>
+     */
+    public function columnOptions(): array
+    {
+        if ($this->mapHasHeader) {
+            return collect($this->detectedHeaders)
+                ->map(fn (string $h) => ['id' => $h, 'name' => $h])
+                ->all();
+        }
+
+        return collect($this->detectedHeaders)
+            ->map(fn (string $sample, int $i) => [
+                'id' => (string) $i,
+                'name' => 'Column '.($i + 1).' — '.$sample,
+            ])
+            ->values()
+            ->all();
+    }
+
     private function sniffHeaders(string $path): array
     {
         $handle = fopen($path, 'r');
@@ -174,6 +194,7 @@ class Wizard extends Component
     {
         return view('livewire.imports.wizard', [
             'accounts' => Account::active()->orderBy('name')->get(),
+            'columnOptions' => $this->columnOptions(),
             'counts' => [
                 'new' => collect($this->previewRows)->where('status', 'new')->count(),
                 'duplicate' => collect($this->previewRows)->where('status', 'duplicate')->count(),

@@ -22,13 +22,19 @@
 
     @if ($step === 'map')
         <x-card class="border border-base-300">
-            <p class="text-sm mb-3">Map the CSV's columns to the fields we need. Detected headers: {{ implode(', ', $detectedHeaders) }}</p>
+            <p class="text-sm mb-3">
+                @if ($mapHasHeader)
+                    Map the CSV's columns to the fields we need. Detected headers: {{ implode(', ', $detectedHeaders) }}
+                @else
+                    No header row — pick columns by position. First-row sample: {{ implode(', ', $detectedHeaders) }}
+                @endif
+            </p>
+            <x-checkbox label="First row is a header" wire:model.live="mapHasHeader" class="mb-3" />
             <div class="grid gap-3 md:grid-cols-2">
-                <x-select label="Date column" :options="collect($detectedHeaders)->map(fn ($h) => ['id' => $h, 'name' => $h])" placeholder="…" wire:model="mapDateColumn" />
+                <x-select label="Date column" :options="$columnOptions" placeholder="…" wire:model="mapDateColumn" />
                 <x-input label="Date format" wire:model="mapDateFormat" hint="e.g. m/d/Y, d/m/Y, Y-m-d" />
-                <x-select label="Description column" :options="collect($detectedHeaders)->map(fn ($h) => ['id' => $h, 'name' => $h])" placeholder="…" wire:model="mapDescriptionColumn" />
-                <x-select label="Amount column" :options="collect($detectedHeaders)->map(fn ($h) => ['id' => $h, 'name' => $h])" placeholder="…" wire:model="mapAmountColumn" />
-                <x-checkbox label="First row is a header" wire:model="mapHasHeader" />
+                <x-select label="Description column" :options="$columnOptions" placeholder="…" wire:model="mapDescriptionColumn" />
+                <x-select label="Amount column" :options="$columnOptions" placeholder="…" wire:model="mapAmountColumn" />
             </div>
             <div class="flex justify-end mt-4">
                 <x-button label="Next" class="btn-primary" wire:click="proceedFromMap" />

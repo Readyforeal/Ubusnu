@@ -20,10 +20,7 @@ class ParseCsvForPreview
     {
         $delimiter = $profile['delimiter'] ?? ',';
         $hasHeader = (bool) ($profile['has_header'] ?? true);
-        $dateCol = $profile['date_column'];
         $dateFormat = $profile['date_format'];
-        $descCol = $profile['description_column'];
-        $amountCol = $profile['amount_column'];
 
         $this->transferCategory = Category::where('name', 'Transfer')->first();
 
@@ -32,28 +29,26 @@ class ParseCsvForPreview
             return [];
         }
 
-        $header = null;
+        $firstRow = fgetcsv($handle, 0, $delimiter);
+        if ($firstRow === false) {
+            fclose($handle);
+
+            return [];
+        }
+
+        $dateIdx = $this->resolveColumnIndex($profile['date_column'], $firstRow, $hasHeader);
+        $descIdx = $this->resolveColumnIndex($profile['description_column'], $firstRow, $hasHeader);
+        $amountIdx = $this->resolveColumnIndex($profile['amount_column'], $firstRow, $hasHeader);
+        $expectedFieldCount = count($firstRow);
+
         $rows = [];
 
+        if (! $hasHeader) {
+            $rows[] = $this->safeProcessRow($account, $firstRow, $expectedFieldCount, $dateIdx, $dateFormat, $descIdx, $amountIdx);
+        }
+
         while (($raw = fgetcsv($handle, 0, $delimiter)) !== false) {
-            if ($hasHeader && $header === null) {
-                $header = $raw;
-
-                continue;
-            }
-
-            try {
-                $assoc = $hasHeader ? array_combine($header, $raw) : $raw;
-                $rows[] = $this->processRow($account, $assoc, $dateCol, $dateFormat, $descCol, $amountCol);
-            } catch (\Throwable $e) {
-                $rows[] = [
-                    'occurred_on' => null,
-                    'description' => implode(',', (array) $raw),
-                    'amount_cents' => null,
-                    'status' => 'error',
-                    'error' => 'Malformed CSV row (field count mismatch or parse failure)',
-                ];
-            }
+            $rows[] = $this->safeProcessRow($account, $raw, $expectedFieldCount, $dateIdx, $dateFormat, $descIdx, $amountIdx);
         }
 
         fclose($handle);
@@ -62,14 +57,57 @@ class ParseCsvForPreview
     }
 
     /**
-     * @param  array<string, string>  $assoc
+     * @param  array<int, string>  $firstRow
+     */
+    private function resolveColumnIndex(string|int $colRef, array $firstRow, bool $hasHeader): int
+    {
+        if ($hasHeader) {
+            $idx = array_search((string) $colRef, $firstRow, true);
+
+            return $idx === false ? -1 : (int) $idx;
+        }
+
+        return (int) $colRef;
+    }
+
+    /**
+     * @param  array<int, string>  $raw
      * @return array<string, mixed>
      */
-    private function processRow(Account $account, array $assoc, string $dateCol, string $dateFormat, string $descCol, string $amountCol): array
+    private function safeProcessRow(Account $account, array $raw, int $expectedFieldCount, int $dateIdx, string $dateFormat, int $descIdx, int $amountIdx): array
     {
-        $rawDate = $assoc[$dateCol] ?? null;
-        $rawDesc = trim((string) ($assoc[$descCol] ?? ''));
-        $rawAmount = $assoc[$amountCol] ?? null;
+        if (count($raw) !== $expectedFieldCount) {
+            return [
+                'occurred_on' => null,
+                'description' => implode(',', (array) $raw),
+                'amount_cents' => null,
+                'status' => 'error',
+                'error' => 'Malformed CSV row (field count mismatch)',
+            ];
+        }
+
+        try {
+            return $this->processRow($account, $raw, $dateIdx, $dateFormat, $descIdx, $amountIdx);
+        } catch (\Throwable) {
+            return [
+                'occurred_on' => null,
+                'description' => implode(',', (array) $raw),
+                'amount_cents' => null,
+                'status' => 'error',
+                'error' => 'Malformed CSV row (parse failure)',
+            ];
+        }
+    }
+
+    /**
+     * @param  array<int, string>  $raw
+     * @return array<string, mixed>
+     */
+    private function processRow(Account $account, array $raw, int $dateIdx, string $dateFormat, int $descIdx, int $amountIdx): array
+    {
+        $rawDate = $raw[$dateIdx] ?? null;
+        $rawDesc = trim((string) ($raw[$descIdx] ?? ''));
+        $rawAmount = $raw[$amountIdx] ?? null;
 
         try {
             $occurredOn = CarbonImmutable::createFromFormat($dateFormat, (string) $rawDate);

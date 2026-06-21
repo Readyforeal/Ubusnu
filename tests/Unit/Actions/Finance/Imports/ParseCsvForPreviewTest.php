@@ -108,3 +108,31 @@ it('handles rows with mismatched field counts as errors instead of crashing', fu
 
     unlink($path);
 });
+
+it('parses CSVs with no header row using positional column indices', function () {
+    $account = Account::factory()->create();
+    $path = tempnam(sys_get_temp_dir(), 'csv');
+    file_put_contents($path,
+        "04/01/2026,-12.33,26091001,5589 R & K COUNTRY STORE MEAD NE\n".
+        "04/02/2026,-50.00,26091002,Another Merchant\n"
+    );
+
+    $rows = (new ParseCsvForPreview)($account, $path, [
+        'delimiter' => ',',
+        'has_header' => false,
+        'date_column' => '0',
+        'date_format' => 'm/d/Y',
+        'description_column' => '3',
+        'amount_column' => '1',
+    ]);
+
+    expect($rows)->toHaveCount(2);
+    expect($rows[0]['status'])->toBe('new');
+    expect($rows[0]['occurred_on'])->toBe('2026-04-01');
+    expect($rows[0]['description'])->toBe('5589 R & K COUNTRY STORE MEAD NE');
+    expect($rows[0]['amount_cents'])->toBe(-1233);
+    expect($rows[1]['occurred_on'])->toBe('2026-04-02');
+    expect($rows[1]['amount_cents'])->toBe(-5000);
+
+    unlink($path);
+});
