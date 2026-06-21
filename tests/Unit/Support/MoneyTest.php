@@ -28,3 +28,14 @@ it('converts dollar string to cents', function () {
 it('strips currency formatting when parsing', function () {
     expect(Money::toCents('$1,234.56'))->toBe(123456);
 });
+
+it('formats negative sub-dollar amounts', function () {
+    expect(Money::format(-7))->toBe('-$0.07');
+    expect(Money::format(-99))->toBe('-$0.99');
+});
+
+it('returns 0 for unparseable input to toCents', function () {
+    expect(Money::toCents(''))->toBe(0);
+    expect(Money::toCents('-'))->toBe(0);
+    expect(Money::toCents('abc'))->toBe(0);
+});
