@@ -24,3 +24,17 @@ it('hides archived accounts by default', function () {
         ->assertSee('Active')
         ->assertDontSee('Archived');
 });
+
+it('computes balances with a single aggregate query (no N+1)', function () {
+    Account::factory()->count(5)->create();
+
+    DB::enableQueryLog();
+    Livewire::test(Index::class)->assertOk();
+    $queries = DB::getQueryLog();
+    DB::disableQueryLog();
+
+    // Expect: accounts query + at most 1 aggregate query (plus any framework queries like session).
+    // We're permissive: assert the SUM aggregation didn't run 5 separate times.
+    $sumQueries = collect($queries)->filter(fn ($q) => str_contains($q['query'], 'SUM(amount_cents)'))->count();
+    expect($sumQueries)->toBeLessThanOrEqual(1);
+});

@@ -2,8 +2,8 @@
 
 namespace App\Livewire\Accounts;
 
-use App\Actions\Finance\Accounts\ComputeAccountBalance;
 use App\Models\Account;
+use App\Models\Transaction;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
@@ -31,15 +31,21 @@ class Index extends Component
     #[Computed]
     public function accounts(): array
     {
-        $balance = new ComputeAccountBalance;
+        $accounts = Account::active()->orderBy('name')->get();
+        if ($accounts->isEmpty()) {
+            return [];
+        }
 
-        return Account::active()
-            ->orderBy('name')
-            ->get()
-            ->map(fn (Account $a) => [
-                'model' => $a,
-                'balance_cents' => $balance($a),
-            ])->all();
+        $sums = Transaction::query()
+            ->whereIn('account_id', $accounts->pluck('id'))
+            ->selectRaw('account_id, SUM(amount_cents) as total')
+            ->groupBy('account_id')
+            ->pluck('total', 'account_id');
+
+        return $accounts->map(fn (Account $a) => [
+            'model' => $a,
+            'balance_cents' => $a->starting_balance_cents + (int) ($sums[$a->id] ?? 0),
+        ])->all();
     }
 
     public function render()

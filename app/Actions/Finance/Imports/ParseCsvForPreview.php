@@ -10,6 +10,8 @@ use Carbon\CarbonImmutable;
 
 class ParseCsvForPreview
 {
+    private ?Category $transferCategory = null;
+
     /**
      * @param  array<string, mixed>  $profile
      * @return array<int, array<string, mixed>>
@@ -22,6 +24,8 @@ class ParseCsvForPreview
         $dateFormat = $profile['date_format'];
         $descCol = $profile['description_column'];
         $amountCol = $profile['amount_column'];
+
+        $this->transferCategory = Category::where('name', 'Transfer')->first();
 
         $handle = fopen($path, 'r');
         if ($handle === false) {
@@ -38,8 +42,18 @@ class ParseCsvForPreview
                 continue;
             }
 
-            $assoc = $hasHeader ? array_combine($header, $raw) : $raw;
-            $rows[] = $this->processRow($account, $assoc, $dateCol, $dateFormat, $descCol, $amountCol);
+            try {
+                $assoc = $hasHeader ? array_combine($header, $raw) : $raw;
+                $rows[] = $this->processRow($account, $assoc, $dateCol, $dateFormat, $descCol, $amountCol);
+            } catch (\Throwable $e) {
+                $rows[] = [
+                    'occurred_on' => null,
+                    'description' => implode(',', (array) $raw),
+                    'amount_cents' => null,
+                    'status' => 'error',
+                    'error' => 'Malformed CSV row (field count mismatch or parse failure)',
+                ];
+            }
         }
 
         fclose($handle);
@@ -106,7 +120,7 @@ class ParseCsvForPreview
 
     private function matchTransferCategory(string $description): ?int
     {
-        $transfer = Category::where('name', 'Transfer')->first();
+        $transfer = $this->transferCategory;
         if (! $transfer) {
             return null;
         }

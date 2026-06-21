@@ -91,3 +91,20 @@ it('auto-categorizes rows matching Transfer keywords', function () {
 
     unlink($path);
 });
+
+it('handles rows with mismatched field counts as errors instead of crashing', function () {
+    $account = Account::factory()->create();
+
+    $path = tempnam(sys_get_temp_dir(), 'csv');
+    file_put_contents($path, "Date,Description,Amount\n06/01/2026,Good Row,-10.00\n06/02/2026,Has,unquoted,comma,-5.00\n06/03/2026,Another Good,15.00\n");
+
+    $rows = (new ParseCsvForPreview)($account, $path, $this->profile);
+
+    expect($rows)->toHaveCount(3);
+    expect($rows[0]['status'])->toBe('new');
+    expect($rows[1]['status'])->toBe('error');
+    expect($rows[1]['error'])->toContain('Malformed');
+    expect($rows[2]['status'])->toBe('new');
+
+    unlink($path);
+});
