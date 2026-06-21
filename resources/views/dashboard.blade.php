@@ -1,18 +1,12 @@
 <x-layouts::app :title="__('Dashboard')">
-    <div class="flex h-full w-full flex-1 flex-col gap-4 rounded-xl">
-        <div class="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div class="relative aspect-video overflow-hidden rounded-xl border border-base-300">
-                <x-placeholder-pattern class="absolute inset-0 size-full stroke-base-content/20" />
-            </div>
-            <div class="relative aspect-video overflow-hidden rounded-xl border border-base-300">
-                <x-placeholder-pattern class="absolute inset-0 size-full stroke-base-content/20" />
-            </div>
-            <div class="relative aspect-video overflow-hidden rounded-xl border border-base-300">
-                <x-placeholder-pattern class="absolute inset-0 size-full stroke-base-content/20" />
-            </div>
+    <div class="flex h-full w-full flex-1 flex-col gap-4">
+        <div>
+            <livewire:charts.balance-chart :account-id="null" key="chart-household" />
         </div>
-        <div class="relative h-full flex-1 overflow-hidden rounded-xl border border-base-300">
-            <x-placeholder-pattern class="absolute inset-0 size-full stroke-base-content/20" />
+
+        <div>
+            <h2 class="text-lg font-semibold mb-3">{{ __('Accounts') }}</h2>
+            <livewire:accounts.index key="dashboard-accounts" />
         </div>
     </div>
 </x-layouts::app>
