@@ -325,7 +325,10 @@ new #[Title('Import CSV')] class extends Component {
                 <x-icon name="lucide.check-circle" class="size-12 mx-auto text-success" />
                 <h2 class="text-lg font-semibold">Import complete</h2>
                 <div class="flex gap-2 justify-center">
-                    <x-button label="View import" link="{{ route('imports.index') }}" class="btn-primary" />
+                    @if ($createdBatchId)
+                        <x-button label="View this import" link="{{ route('imports.show', $createdBatchId) }}" class="btn-primary" />
+                    @endif
+                    <x-button label="All imports" link="{{ route('imports.index') }}" class="btn-ghost" />
                     <x-button label="New import" link="{{ route('imports.new') }}" class="btn-ghost" />
                 </div>
             </div>
