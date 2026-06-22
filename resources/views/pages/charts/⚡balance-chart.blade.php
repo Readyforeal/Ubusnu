@@ -211,14 +211,12 @@ new class extends Component {
                     type: 'datetime',
                     axisBorder: { show: false },
                     axisTicks: { show: false },
-                    labels: {
-                        style: { fontSize: '11px', colors: this.withAlpha(c.baseContent, 0.6) },
-                    },
+                    labels: { style: { fontSize: '11px' } },
                 });
 
                 out.yaxis = {
                     labels: {
-                        style: { fontSize: '11px', colors: this.withAlpha(c.baseContent, 0.6) },
+                        style: { fontSize: '11px' },
                         formatter: (v) => {
                             if (Math.abs(v) >= 1000) return '$' + (v / 1000).toFixed(1) + 'k';
                             return '$' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
