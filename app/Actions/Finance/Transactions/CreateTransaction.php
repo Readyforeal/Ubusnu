@@ -14,6 +14,7 @@ class CreateTransaction
         int $amountCents,
         ?int $categoryId = null,
         ?string $notes = null,
+        ?int $billId = null,
     ): Transaction {
         return Transaction::create([
             'account_id' => $account->id,
@@ -23,6 +24,7 @@ class CreateTransaction
             'category_id' => $categoryId,
             'source' => 'manual',
             'notes' => $notes,
+            'bill_id' => $billId,
         ]);
     }
 }

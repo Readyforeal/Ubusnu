@@ -50,6 +50,7 @@ class ImportTransactions
                         'description' => $row['description'],
                         'amount_cents' => $row['amount_cents'],
                         'category_id' => $row['category_id'] ?? null,
+                        'bill_id' => $row['bill_id'] ?? null,
                         'dedup_hash' => $row['dedup_hash'],
                         'import_batch_id' => $batch->id,
                         'source' => 'import',

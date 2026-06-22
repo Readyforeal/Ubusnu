@@ -2,6 +2,7 @@
 
 use App\Actions\Finance\Imports\ParseCsvForPreview;
 use App\Models\Account;
+use App\Models\Bill;
 use App\Models\Category;
 use App\Models\Transaction;
 
@@ -153,6 +154,41 @@ it('parses CSVs with no header row using positional column indices', function ()
     expect($rows[0]['amount_cents'])->toBe(-1233);
     expect($rows[1]['occurred_on'])->toBe('2026-04-02');
     expect($rows[1]['amount_cents'])->toBe(-5000);
+
+    unlink($path);
+});
+
+it('auto-links import rows to bills matched by description', function () {
+    $account = Account::factory()->create();
+    $bill = Bill::factory()->create(['match_description' => 'STARBUCKS']);
+
+    $path = tempnam(sys_get_temp_dir(), 'csv');
+    file_put_contents(
+        $path,
+        "Date,Description,Amount\n".
+        "06/01/2026,STARBUCKS #1234,-4.50\n".
+        "06/02/2026,MYSTERY VENDOR,-10.00\n"
+    );
+
+    $rows = (new ParseCsvForPreview)($account, $path, $this->profile);
+
+    expect($rows[0]['bill_id'])->toBe($bill->id);
+    expect($rows[1]['bill_id'])->toBeNull();
+
+    unlink($path);
+});
+
+it('leaves bill_id null when description matches two bills (ambiguous)', function () {
+    $account = Account::factory()->create();
+    Bill::factory()->create(['match_description' => 'PAYMENT']);
+    Bill::factory()->create(['match_description' => 'CARD']);
+
+    $path = tempnam(sys_get_temp_dir(), 'csv');
+    file_put_contents($path, "Date,Description,Amount\n06/01/2026,CARD PAYMENT,-50.00\n");
+
+    $rows = (new ParseCsvForPreview)($account, $path, $this->profile);
+
+    expect($rows[0]['bill_id'])->toBeNull();
 
     unlink($path);
 });

@@ -14,6 +14,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::livewire('buckets', 'pages::buckets.index')->name('buckets.index');
     Route::livewire('goals', 'pages::goals.index')->name('goals.index');
+    Route::livewire('bills', 'pages::bills.index')->name('bills.index');
+    Route::livewire('bills/{bill}', 'pages::bills.show')->name('bills.show');
 
     Route::livewire('categories', 'pages::categories.index')->name('categories.index');
 

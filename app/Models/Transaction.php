@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['account_id', 'occurred_on', 'description', 'amount_cents', 'category_id', 'dedup_hash', 'import_batch_id', 'source', 'notes'])]
+#[Fillable(['account_id', 'occurred_on', 'description', 'amount_cents', 'category_id', 'bill_id', 'dedup_hash', 'import_batch_id', 'source', 'notes'])]
 class Transaction extends Model
 {
     /** @use HasFactory<TransactionFactory> */
@@ -21,6 +21,7 @@ class Transaction extends Model
         return [
             'occurred_on' => 'date',
             'amount_cents' => 'integer',
+            'bill_id' => 'integer',
         ];
     }
 
@@ -53,5 +54,10 @@ class Transaction extends Model
     public function importBatch(): BelongsTo
     {
         return $this->belongsTo(ImportBatch::class);
+    }
+
+    public function bill(): BelongsTo
+    {
+        return $this->belongsTo(Bill::class);
     }
 }

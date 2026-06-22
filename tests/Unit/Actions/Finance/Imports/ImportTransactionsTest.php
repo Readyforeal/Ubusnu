@@ -2,6 +2,7 @@
 
 use App\Actions\Finance\Imports\ImportTransactions;
 use App\Models\Account;
+use App\Models\Bill;
 use App\Models\ImportBatch;
 use App\Models\Transaction;
 use App\Models\User;
@@ -96,4 +97,25 @@ it('records row_count from the input total regardless of status', function () {
     $batch = (new ImportTransactions)($account, $rows, $user->id, 'sample.csv');
 
     expect($batch->row_count)->toBe(5);
+});
+
+it('persists bill_id from preview rows', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create();
+    $bill = Bill::factory()->create();
+
+    $rows = [[
+        'occurred_on' => '2026-06-01',
+        'description' => 'STARBUCKS',
+        'amount_cents' => -450,
+        'dedup_hash' => 'h1',
+        'category_id' => null,
+        'bill_id' => $bill->id,
+        'status' => 'new',
+    ]];
+
+    $batch = (new ImportTransactions)($account, $rows, $user->id, 'sample.csv');
+
+    expect($batch->imported_count)->toBe(1);
+    expect(Transaction::where('description', 'STARBUCKS')->first()->bill_id)->toBe($bill->id);
 });
