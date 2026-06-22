@@ -11,7 +11,13 @@ class UpdateIncomeSource
      */
     public function __invoke(IncomeSource $source, array $attributes): IncomeSource
     {
-        $source->update($attributes);
+        $allowed = [
+            'name', 'cadence', 'next_expected_on', 'primary_day_of_month',
+            'secondary_day_of_month', 'expected_amount_cents', 'account_id',
+            'category_id', 'match_description', 'color', 'notes', 'sort_order',
+        ];
+
+        $source->update(collect($attributes)->only($allowed)->all());
 
         return $source->fresh();
     }
