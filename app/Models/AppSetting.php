@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
-#[Fillable(['monthly_income_target_cents'])]
+#[Fillable(['monthly_income_target_cents', 'forecast_lookback_weeks'])]
 class AppSetting extends Model
 {
     /** @use HasFactory<AppSettingFactory> */
@@ -18,6 +18,7 @@ class AppSetting extends Model
     {
         return [
             'monthly_income_target_cents' => 'integer',
+            'forecast_lookback_weeks' => 'integer',
         ];
     }
 
@@ -32,6 +33,7 @@ class AppSetting extends Model
         DB::table('app_settings')->insert([
             'id' => 1,
             'monthly_income_target_cents' => 0,
+            'forecast_lookback_weeks' => 12,
             'created_at' => now(),
             'updated_at' => now(),
         ]);

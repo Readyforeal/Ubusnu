@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'starting_balance_cents', 'counts_toward_goals', 'archived_at', 'import_profile'])]
+#[Fillable(['name', 'starting_balance_cents', 'counts_toward_goals', 'archived_at', 'import_profile', 'minimum_balance_cents'])]
 class Account extends Model
 {
     /** @use HasFactory<AccountFactory> */
@@ -21,6 +21,7 @@ class Account extends Model
             'counts_toward_goals' => 'boolean',
             'archived_at' => 'datetime',
             'import_profile' => 'array',
+            'minimum_balance_cents' => 'integer',
         ];
     }
 
