@@ -1,5 +1,7 @@
 <x-layouts::app :title="__('Dashboard')">
     <div class="flex h-full w-full flex-1 flex-col gap-4">
+        <livewire:pages::dashboard.budget-status key="budget-status" />
+
         <div>
             <livewire:pages::charts.balance-chart :account-id="null" key="chart-household" />
         </div>
