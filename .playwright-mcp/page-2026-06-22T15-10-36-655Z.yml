@@ -1,0 +1,72 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e5]:
+      - heading "Import CSV" [level=1] [ref=e6]
+      - list [ref=e7]:
+        - listitem [ref=e8]: Upload
+        - listitem [ref=e9]: Map columns
+        - listitem [ref=e10]: Preview
+        - listitem [ref=e11]: Done
+      - generic [ref=e14]:
+        - group "Target account" [ref=e16]:
+          - generic [ref=e17]: Target account
+          - combobox [ref=e21]:
+            - option "Pick an account"
+            - option "Test" [selected]
+        - group "CSV file" [ref=e23]:
+          - generic [ref=e24]: CSV file
+          - button "Choose File" [ref=e25] [cursor=pointer]
+          - generic [ref=e26]: Max 10 MB
+        - button "Next" [ref=e28] [cursor=pointer]:
+          - generic [ref=e29]: Next
+    - generic [ref=e30]:
+      - generic "close sidebar"
+      - generic [ref=e31]:
+        - generic [ref=e33]:
+          - generic [ref=e34]:
+            - img [ref=e35]
+            - generic [ref=e37]: Laravel
+          - list [ref=e38]:
+            - listitem [ref=e39]:
+              - link "Dashboard" [ref=e40] [cursor=pointer]:
+                - /url: http://ubusnu.test/dashboard
+                - img [ref=e42]
+                - generic [ref=e47]: Dashboard
+            - listitem [ref=e48]:
+              - link "Accounts" [ref=e49] [cursor=pointer]:
+                - /url: http://ubusnu.test/accounts
+                - img [ref=e51]
+                - generic [ref=e54]: Accounts
+            - listitem [ref=e55]:
+              - link "Transactions" [ref=e56] [cursor=pointer]:
+                - /url: http://ubusnu.test/transactions
+                - img [ref=e58]
+                - generic [ref=e59]: Transactions
+            - listitem [ref=e60]:
+              - link "Imports" [ref=e61] [cursor=pointer]:
+                - /url: http://ubusnu.test/imports
+                - img [ref=e63]
+                - generic [ref=e66]: Imports
+            - listitem [ref=e67]:
+              - link "Categories" [ref=e68] [cursor=pointer]:
+                - /url: http://ubusnu.test/categories
+                - img [ref=e70]
+                - generic [ref=e73]: Categories
+          - list [ref=e74]:
+            - generic [ref=e75]:
+              - generic [ref=e76]:
+                - generic [ref=e79]: DU
+                - generic [ref=e81]: Debug User
+              - generic [ref=e83]:
+                - button "Logoff" [ref=e85] [cursor=pointer]:
+                  - text: Logoff
+                  - img [ref=e87]
+                - link "Settings" [ref=e90] [cursor=pointer]:
+                  - /url: /settings
+                  - text: Settings
+                  - img [ref=e92]
+        - list [ref=e95]:
+          - listitem [ref=e96]:
+            - generic [ref=e97]:
+              - img [ref=e99]
+              - generic [ref=e101]: Collapse

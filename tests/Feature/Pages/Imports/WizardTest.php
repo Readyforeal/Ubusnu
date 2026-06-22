@@ -102,7 +102,7 @@ it('commits the import and creates a batch', function () {
         ->set('mapAmountColumn', 'Amount')
         ->set('mapHasHeader', true)
         ->call('proceedFromMap')
-        ->call('commit')
+        ->call('runImport')
         ->assertSet('step', 'done');
 
     expect(ImportBatch::count())->toBe(1);
@@ -152,7 +152,7 @@ it('imports a CSV with no header row using positional column indices', function 
         ->set('mapAmountColumn', '1')
         ->call('proceedFromMap')
         ->assertSet('step', 'preview')
-        ->call('commit')
+        ->call('runImport')
         ->assertSet('step', 'done');
 
     expect($account->fresh()->import_profile['has_header'])->toBeFalse();

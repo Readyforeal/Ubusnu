@@ -105,7 +105,7 @@ new #[Title('Import CSV')] class extends Component {
         $this->step = 'preview';
     }
 
-    public function commit(): void
+    public function runImport(): void
     {
         $account = Account::findOrFail($this->accountId);
         $batch = (new ImportTransactions)($account, $this->previewRows, auth()->id(), $this->uploadedFilename);
@@ -267,7 +267,7 @@ new #[Title('Import CSV')] class extends Component {
                     <span class="text-warning">{{ $counts['duplicate'] }} duplicates</span>
                     <span class="text-error">{{ $counts['error'] }} errors</span>
                 </div>
-                <x-button label="Import {{ $counts['new'] }} rows" class="btn-primary" wire:click="commit" wire:loading.attr="disabled" />
+                <x-button label="Import {{ $counts['new'] }} rows" class="btn-primary" wire:click="runImport" wire:loading.attr="disabled" />
             </div>
 
             <div class="overflow-x-auto">
