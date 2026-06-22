@@ -108,15 +108,15 @@ new class extends Component {
         x-data="{
             chart: null,
             observer: null,
-            init() {
+            renderChart() {
+                if (this.chart) this.chart.destroy();
                 this.chart = new ApexCharts($refs.chart, this.buildOptions(this.$wire.chart));
                 this.chart.render();
-                this.$watch('$wire.chart', (newCfg) => {
-                    if (this.chart) this.chart.updateOptions(this.buildOptions(newCfg), true);
-                });
-                this.observer = new MutationObserver(() => {
-                    if (this.chart) this.chart.updateOptions(this.buildOptions(this.$wire.chart), true);
-                });
+            },
+            init() {
+                this.renderChart();
+                this.$watch('$wire.chart', () => this.renderChart());
+                this.observer = new MutationObserver(() => this.renderChart());
                 this.observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
             },
             destroy() {
