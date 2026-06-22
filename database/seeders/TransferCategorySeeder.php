@@ -12,8 +12,8 @@ class TransferCategorySeeder extends Seeder
         Category::updateOrCreate(
             ['name' => 'Transfer'],
             [
+                'kind' => 'transfer',
                 'keywords' => 'transfer, tfr, to chequing, to savings, e-transfer, etfr',
-                'excluded_from_totals' => true,
             ]
         );
     }

@@ -10,7 +10,6 @@ it('creates a new category', function () {
     Livewire::test('pages::categories.form', ['categoryId' => 0])
         ->set('name', 'Groceries')
         ->set('keywords', 'safeway, save-on, walmart')
-        ->set('excludedFromTotals', false)
         ->call('save')
         ->assertHasNoErrors();
 

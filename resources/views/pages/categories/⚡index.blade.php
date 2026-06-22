@@ -58,12 +58,9 @@ new #[Title('Categories')] class extends Component {
     <x-table :headers="[
         ['key' => 'name', 'label' => 'Name'],
         ['key' => 'keywords', 'label' => 'Keywords'],
-        ['key' => 'excluded_from_totals', 'label' => 'Excluded'],
+        ['key' => 'kind', 'label' => 'Kind'],
         ['key' => 'actions', 'label' => '', 'class' => 'w-20'],
     ]" :rows="$this->categories">
-        @scope('cell_excluded_from_totals', $row)
-            {{ $row->excluded_from_totals ? 'Yes' : 'No' }}
-        @endscope
         @scope('cell_actions', $row)
             <x-button icon="lucide.pencil" class="btn-ghost btn-sm" wire:click="startEdit({{ $row->id }})" />
         @endscope
