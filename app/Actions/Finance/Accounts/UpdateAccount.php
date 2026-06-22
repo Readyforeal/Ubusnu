@@ -11,7 +11,7 @@ class UpdateAccount
      */
     public function __invoke(Account $account, array $attributes): Account
     {
-        $allowed = ['name', 'starting_balance_cents', 'counts_toward_goals'];
+        $allowed = ['name', 'starting_balance_cents', 'counts_toward_goals', 'minimum_balance_cents'];
 
         $account->update(collect($attributes)->only($allowed)->all());
 

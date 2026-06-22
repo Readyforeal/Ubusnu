@@ -45,3 +45,25 @@ it('requires a name', function () {
         ->call('save')
         ->assertHasErrors(['name']);
 });
+
+it('saves the minimum balance on create', function () {
+    Livewire::test('pages::accounts.form', ['accountId' => 0])
+        ->set('name', 'Checking')
+        ->set('startingBalanceDollars', '1000')
+        ->set('minimumBalanceDollars', '500')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Account::where('name', 'Checking')->first()->minimum_balance_cents)->toBe(50000);
+});
+
+it('updates the minimum balance', function () {
+    $account = Account::factory()->create(['minimum_balance_cents' => 0]);
+
+    Livewire::test('pages::accounts.form', ['accountId' => $account->id])
+        ->set('minimumBalanceDollars', '250.50')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($account->fresh()->minimum_balance_cents)->toBe(25050);
+});
