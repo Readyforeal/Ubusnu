@@ -83,50 +83,164 @@ new class extends Component {
         $series = (new ComputeBalanceSeries)($accounts, $range['start'], $range['end']);
 
         $this->chart = [
-            'chart' => ['type' => 'area', 'height' => 280, 'toolbar' => ['show' => false], 'animations' => ['enabled' => false]],
             'series' => [[
                 'name' => 'Balance',
                 'data' => array_map(fn ($p) => ['x' => $p['date'], 'y' => $p['balance_cents'] / 100], $series),
             ]],
-            'xaxis' => ['type' => 'datetime'],
-            'stroke' => ['curve' => 'stepline', 'width' => 2],
-            'dataLabels' => ['enabled' => false],
-            'tooltip' => ['x' => ['format' => 'yyyy-MM-dd']],
         ];
     }
 }; ?>
 
 <div>
-    <div class="flex justify-end gap-1 mb-2 items-center flex-wrap">
+    <div class="flex justify-end gap-2 mb-3 items-center flex-wrap">
         @if ($range === 'custom')
             <input type="date" wire:model.live.debounce.500ms="customStart" class="input input-xs input-bordered" />
             <span class="text-xs opacity-60">to</span>
             <input type="date" wire:model.live.debounce.500ms="customEnd" class="input input-xs input-bordered" />
         @endif
-        @foreach (['30d' => '30D', '90d' => '90D', 'ytd' => 'YTD', 'all' => 'All', 'custom' => 'Custom'] as $key => $label)
-            <x-button :label="$label" class="btn-xs {{ $range === $key ? 'btn-primary' : 'btn-ghost' }}" wire:click="setRange('{{ $key }}')" />
-        @endforeach
+        <div class="join">
+            @foreach (['30d' => '30D', '90d' => '90D', 'ytd' => 'YTD', 'all' => 'All', 'custom' => 'Custom'] as $key => $label)
+                <button type="button" class="btn btn-xs join-item {{ $range === $key ? 'btn-primary' : 'btn-ghost' }}" wire:click="setRange('{{ $key }}')">{{ $label }}</button>
+            @endforeach
+        </div>
     </div>
     <div
         x-data="{
             chart: null,
+            observer: null,
             init() {
-                const cfg = this.withFormatters(this.$wire.chart);
-                this.chart = new ApexCharts($refs.chart, cfg);
+                this.chart = new ApexCharts($refs.chart, this.buildOptions(this.$wire.chart));
                 this.chart.render();
                 this.$watch('$wire.chart', (newCfg) => {
-                    if (this.chart) this.chart.updateOptions(this.withFormatters(newCfg));
+                    if (this.chart) this.chart.updateOptions(this.buildOptions(newCfg), true);
                 });
-            },
-            withFormatters(cfg) {
-                const out = JSON.parse(JSON.stringify(cfg));
-                out.yaxis = out.yaxis || {};
-                out.yaxis.labels = out.yaxis.labels || {};
-                out.yaxis.labels.formatter = (v) => '$' + Number(v).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                return out;
+                this.observer = new MutationObserver(() => {
+                    if (this.chart) this.chart.updateOptions(this.buildOptions(this.$wire.chart), true);
+                });
+                this.observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
             },
             destroy() {
+                if (this.observer) this.observer.disconnect();
                 if (this.chart) { this.chart.destroy(); this.chart = null; }
+            },
+            readThemeColors() {
+                // Read daisyUI CSS variables directly. Format varies across daisyUI 4/5
+                // (raw oklch triples vs already-wrapped). Normalize through a hidden
+                // probe to get rgb() strings regardless of source format.
+                const style = getComputedStyle(document.documentElement);
+                const getVar = (...names) => {
+                    for (const n of names) {
+                        const v = style.getPropertyValue(n).trim();
+                        if (v) {
+                            return v.startsWith('oklch(') || v.startsWith('#') || v.startsWith('rgb') ? v : `oklch(${v})`;
+                        }
+                    }
+                    return null;
+                };
+                const probe = document.createElement('div');
+                probe.style.position = 'absolute';
+                probe.style.visibility = 'hidden';
+                probe.style.pointerEvents = 'none';
+                document.body.appendChild(probe);
+                const toRgb = (color) => {
+                    if (!color) return 'rgb(0, 0, 0)';
+                    probe.style.color = '';
+                    probe.style.color = color;
+                    return getComputedStyle(probe).color;
+                };
+                const colors = {
+                    primary: toRgb(getVar('--color-primary', '--p')),
+                    baseContent: toRgb(getVar('--color-base-content', '--bc')),
+                    base100: toRgb(getVar('--color-base-100', '--b1')),
+                };
+                probe.remove();
+                return colors;
+            },
+            isDark(rgb) {
+                const m = rgb.match(/\d+/g);
+                if (!m || m.length < 3) return false;
+                const lum = (0.299 * +m[0] + 0.587 * +m[1] + 0.114 * +m[2]) / 255;
+                return lum < 0.5;
+            },
+            withAlpha(rgb, a) {
+                const m = rgb.match(/\d+/g);
+                if (!m || m.length < 3) return rgb;
+                return `rgba(${m[0]}, ${m[1]}, ${m[2]}, ${a})`;
+            },
+            buildOptions(cfg) {
+                const out = JSON.parse(JSON.stringify(cfg || {}));
+                const c = this.readThemeColors();
+                const dark = this.isDark(c.base100);
+
+                out.chart = Object.assign({
+                    type: 'area',
+                    height: 280,
+                    toolbar: { show: false },
+                    animations: { enabled: false },
+                    zoom: { enabled: false },
+                    background: 'transparent',
+                    fontFamily: 'Instrument Sans, ui-sans-serif, system-ui, sans-serif',
+                    foreColor: c.baseContent,
+                }, out.chart || {});
+
+                out.colors = [c.primary];
+
+                out.stroke = { curve: 'stepline', width: 2, lineCap: 'round' };
+
+                out.fill = {
+                    type: 'gradient',
+                    gradient: {
+                        shadeIntensity: 0,
+                        opacityFrom: 0.35,
+                        opacityTo: 0.02,
+                        stops: [0, 100],
+                    },
+                };
+
+                out.dataLabels = { enabled: false };
+
+                out.grid = {
+                    borderColor: this.withAlpha(c.baseContent, 0.08),
+                    strokeDashArray: 4,
+                    xaxis: { lines: { show: false } },
+                    yaxis: { lines: { show: true } },
+                    padding: { top: 0, right: 8, bottom: 0, left: 8 },
+                };
+
+                out.xaxis = Object.assign({}, out.xaxis || {}, {
+                    type: 'datetime',
+                    axisBorder: { show: false },
+                    axisTicks: { show: false },
+                    labels: {
+                        style: { fontSize: '11px', colors: this.withAlpha(c.baseContent, 0.6) },
+                    },
+                });
+
+                out.yaxis = {
+                    labels: {
+                        style: { fontSize: '11px', colors: this.withAlpha(c.baseContent, 0.6) },
+                        formatter: (v) => {
+                            if (Math.abs(v) >= 1000) return '$' + (v / 1000).toFixed(1) + 'k';
+                            return '$' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                        },
+                    },
+                };
+
+                out.tooltip = {
+                    theme: dark ? 'dark' : 'light',
+                    x: { format: 'MMM dd, yyyy' },
+                    y: {
+                        formatter: (v) => '$' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                        title: { formatter: () => 'Balance' },
+                    },
+                    marker: { show: false },
+                };
+
+                out.markers = { size: 0, hover: { size: 4 } };
+
+                out.theme = { mode: dark ? 'dark' : 'light' };
+
+                return out;
             },
         }"
         wire:ignore
