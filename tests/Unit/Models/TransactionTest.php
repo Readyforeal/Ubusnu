@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Account;
+use App\Models\Bill;
 use App\Models\Category;
 use App\Models\Transaction;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -52,4 +53,17 @@ it('soft-deletes and excludes from default queries', function () {
 it('casts occurred_on to a date', function () {
     $tx = Transaction::factory()->create(['occurred_on' => '2026-06-01']);
     expect($tx->occurred_on->format('Y-m-d'))->toBe('2026-06-01');
+});
+
+it('belongsTo a bill when bill_id is set', function () {
+    $bill = Bill::factory()->create();
+    $tx = Transaction::factory()->create(['bill_id' => $bill->id]);
+
+    expect($tx->bill->id)->toBe($bill->id);
+});
+
+it('has null bill when bill_id is null', function () {
+    $tx = Transaction::factory()->create();
+
+    expect($tx->bill)->toBeNull();
 });
