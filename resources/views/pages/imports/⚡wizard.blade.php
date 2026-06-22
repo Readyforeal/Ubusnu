@@ -45,9 +45,18 @@ new #[Title('Import CSV')] class extends Component {
             'upload' => 'required|file|mimes:csv,txt|max:10240',
         ]);
 
-        $this->uploadedPath = $this->upload->getRealPath();
+        $tempPath = $this->upload->getRealPath();
         $this->uploadedFilename = $this->upload->getClientOriginalName();
-        $this->detectedHeaders = $this->sniffHeaders($this->uploadedPath);
+        $this->detectedHeaders = $this->sniffHeaders($tempPath);
+
+        // Copy the upload to a path we own for the rest of the wizard, then
+        // release the Livewire upload reference so it doesn't have to hydrate
+        // on every subsequent request.
+        $persistent = storage_path('app/imports/'.uniqid('wiz_').'.csv');
+        @mkdir(dirname($persistent), 0755, true);
+        copy($tempPath, $persistent);
+        $this->uploadedPath = $persistent;
+        $this->upload = null;
 
         $account = Account::findOrFail($this->accountId);
         $profile = $account->import_profile;
@@ -101,6 +110,11 @@ new #[Title('Import CSV')] class extends Component {
         $account = Account::findOrFail($this->accountId);
         $batch = (new ImportTransactions)($account, $this->previewRows, auth()->id(), $this->uploadedFilename);
         $this->createdBatchId = $batch->id;
+
+        if ($this->uploadedPath && file_exists($this->uploadedPath)) {
+            @unlink($this->uploadedPath);
+        }
+
         $this->step = 'done';
     }
 
