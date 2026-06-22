@@ -4,6 +4,7 @@ use App\Models\Account;
 use App\Models\Bill;
 use App\Models\Category;
 use App\Models\Transaction;
+use Carbon\CarbonImmutable;
 
 it('persists all bill attributes', function () {
     $bill = Bill::factory()->create([
@@ -64,4 +65,116 @@ it('hasMany transactions', function () {
     Transaction::factory()->count(2)->create(['bill_id' => $bill->id]);
 
     expect($bill->transactions)->toHaveCount(2);
+});
+
+it('manuallyMarkedPeriods parses the comma-separated list', function () {
+    $bill = Bill::factory()->create([
+        'manually_marked_paid_periods' => '2026-06, 2026-07,, 2026-08',
+    ]);
+
+    expect($bill->manuallyMarkedPeriods())->toBe(['2026-06', '2026-07', '2026-08']);
+});
+
+it('manuallyMarkedPeriods returns empty array when null', function () {
+    $bill = Bill::factory()->create(['manually_marked_paid_periods' => null]);
+
+    expect($bill->manuallyMarkedPeriods())->toBe([]);
+});
+
+it('currentPeriodToken returns Y-m for monthly bills', function () {
+    CarbonImmutable::setTestNow('2026-06-15');
+    $bill = Bill::factory()->create(['cadence' => 'monthly']);
+
+    expect($bill->currentPeriodToken())->toBe('2026-06');
+
+    CarbonImmutable::setTestNow();
+});
+
+it('currentPeriodToken returns Y for annual bills', function () {
+    CarbonImmutable::setTestNow('2026-06-15');
+    $bill = Bill::factory()->annual()->create();
+
+    expect($bill->currentPeriodToken())->toBe('2026');
+
+    CarbonImmutable::setTestNow();
+});
+
+it('addManuallyMarkedPeriod appends without duplicating', function () {
+    $bill = Bill::factory()->create(['manually_marked_paid_periods' => '2026-06']);
+
+    $bill->addManuallyMarkedPeriod('2026-07');
+    expect($bill->fresh()->manuallyMarkedPeriods())->toBe(['2026-06', '2026-07']);
+
+    $bill->addManuallyMarkedPeriod('2026-06');
+    expect($bill->fresh()->manuallyMarkedPeriods())->toBe(['2026-06', '2026-07']);
+});
+
+it('removeManuallyMarkedPeriod removes the entry leaving others', function () {
+    $bill = Bill::factory()->create(['manually_marked_paid_periods' => '2026-06,2026-07,2026-08']);
+
+    $bill->removeManuallyMarkedPeriod('2026-07');
+
+    expect($bill->fresh()->manuallyMarkedPeriods())->toBe(['2026-06', '2026-08']);
+});
+
+it('removeManuallyMarkedPeriod is a no-op when the period is not present', function () {
+    $bill = Bill::factory()->create(['manually_marked_paid_periods' => '2026-06']);
+
+    $bill->removeManuallyMarkedPeriod('2026-12');
+
+    expect($bill->fresh()->manuallyMarkedPeriods())->toBe(['2026-06']);
+});
+
+it('nextDueDate for monthly bill returns this month if day is in the future', function () {
+    CarbonImmutable::setTestNow('2026-06-10');
+    $bill = Bill::factory()->create(['cadence' => 'monthly', 'due_day_of_month' => 15]);
+
+    expect($bill->nextDueDate()->toDateString())->toBe('2026-06-15');
+
+    CarbonImmutable::setTestNow();
+});
+
+it('nextDueDate for monthly bill returns next month if day has passed', function () {
+    CarbonImmutable::setTestNow('2026-06-20');
+    $bill = Bill::factory()->create(['cadence' => 'monthly', 'due_day_of_month' => 15]);
+
+    expect($bill->nextDueDate()->toDateString())->toBe('2026-07-15');
+
+    CarbonImmutable::setTestNow();
+});
+
+it('nextDueDate for monthly bill returns today if due_day is today', function () {
+    CarbonImmutable::setTestNow('2026-06-15');
+    $bill = Bill::factory()->create(['cadence' => 'monthly', 'due_day_of_month' => 15]);
+
+    expect($bill->nextDueDate()->toDateString())->toBe('2026-06-15');
+
+    CarbonImmutable::setTestNow();
+});
+
+it('nextDueDate clamps to last day of month for day-31 bills in shorter months', function () {
+    CarbonImmutable::setTestNow('2026-02-15');
+    $bill = Bill::factory()->create(['cadence' => 'monthly', 'due_day_of_month' => 31]);
+
+    expect($bill->nextDueDate()->toDateString())->toBe('2026-02-28');
+
+    CarbonImmutable::setTestNow();
+});
+
+it('nextDueDate for annual bill returns this year if date is in the future', function () {
+    CarbonImmutable::setTestNow('2026-06-15');
+    $bill = Bill::factory()->annual()->create(['due_month_of_year' => 11, 'due_day_of_month' => 1]);
+
+    expect($bill->nextDueDate()->toDateString())->toBe('2026-11-01');
+
+    CarbonImmutable::setTestNow();
+});
+
+it('nextDueDate for annual bill returns next year if date has passed', function () {
+    CarbonImmutable::setTestNow('2026-12-15');
+    $bill = Bill::factory()->annual()->create(['due_month_of_year' => 11, 'due_day_of_month' => 1]);
+
+    expect($bill->nextDueDate()->toDateString())->toBe('2027-11-01');
+
+    CarbonImmutable::setTestNow();
 });
