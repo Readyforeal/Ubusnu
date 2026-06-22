@@ -2,6 +2,7 @@
 
 use App\Models\Account;
 use App\Models\ImportBatch;
+use App\Models\IncomeSource;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -157,4 +158,40 @@ it('imports a CSV with no header row using positional column indices', function 
 
     expect($account->fresh()->import_profile['has_header'])->toBeFalse();
     expect(Transaction::count())->toBe(2);
+});
+
+it('matches an income source on import and advances its anchor', function () {
+    $account = Account::factory()->create([
+        'import_profile' => [
+            'delimiter' => ',',
+            'has_header' => true,
+            'date_column' => 'Date',
+            'date_format' => 'm/d/Y',
+            'description_column' => 'Description',
+            'amount_column' => 'Amount',
+        ],
+    ]);
+    $source = IncomeSource::factory()->create([
+        'account_id' => $account->id,
+        'cadence' => 'biweekly',
+        'next_expected_on' => '2026-07-10',
+        'match_description' => 'PAYROLL ALLAN MICHAEL',
+        'expected_amount_cents' => 250000,
+    ]);
+
+    $csv = "Date,Description,Amount\n07/10/2026,DIRECT DEP PAYROLL ALLAN MICHAEL 12345,2500.00\n";
+    $file = UploadedFile::fake()->createWithContent('paycheck.csv', $csv);
+
+    Livewire::test('pages::imports.wizard')
+        ->set('accountId', $account->id)
+        ->set('upload', $file)
+        ->call('proceedFromUpload')
+        ->call('runImport');
+
+    $txn = Transaction::query()->where('description', 'like', '%PAYROLL%')->first();
+    expect($txn)->not->toBeNull();
+    expect($txn->income_source_id)->toBe($source->id);
+
+    // Anchor advanced by biweekly cadence: 2026-07-10 -> 2026-07-24
+    expect($source->fresh()->next_expected_on->toDateString())->toBe('2026-07-24');
 });
