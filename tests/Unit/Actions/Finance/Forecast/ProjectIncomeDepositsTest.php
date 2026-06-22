@@ -74,6 +74,23 @@ it('clamps monthly day to last-of-month for short months', function () {
     expect(array_column($result, 'date'))->toBe(['2026-01-31', '2026-02-28', '2026-03-31']);
 });
 
+it('defaults secondary_day_of_month to 15 when null for semi_monthly source', function () {
+    $account = Account::factory()->create();
+    $source = IncomeSource::factory()->create([
+        'account_id' => $account->id,
+        'cadence' => 'semi_monthly',
+        'next_expected_on' => '2026-07-01',
+        'primary_day_of_month' => 1,
+        'secondary_day_of_month' => null, // should default to 15
+        'expected_amount_cents' => 300000,
+    ]);
+
+    $result = (new ProjectIncomeDeposits)([$source], CarbonImmutable::parse('2026-07-01'), CarbonImmutable::parse('2026-08-15'));
+
+    // Expect: July 1, July 15, Aug 1, Aug 15
+    expect(array_column($result, 'date'))->toBe(['2026-07-01', '2026-07-15', '2026-08-01', '2026-08-15']);
+});
+
 it('returns empty when anchor is past range end', function () {
     $account = Account::factory()->create();
     $source = IncomeSource::factory()->create([

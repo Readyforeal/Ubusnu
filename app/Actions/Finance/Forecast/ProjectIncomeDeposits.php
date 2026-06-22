@@ -21,7 +21,7 @@ class ProjectIncomeDeposits
                 : CarbonImmutable::parse($source->next_expected_on);
 
             $primaryDay = (int) ($source->primary_day_of_month ?? $cursor->day);
-            $secondaryDay = (int) ($source->secondary_day_of_month ?? 0);
+            $secondaryDay = (int) ($source->secondary_day_of_month ?? 15);
 
             while ($cursor->lte($end)) {
                 if ($cursor->gte($start)) {
