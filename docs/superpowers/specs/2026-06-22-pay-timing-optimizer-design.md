@@ -82,7 +82,9 @@ Same idea for bills. Includes **all** upcoming bills in the window, including on
 
 **Signature:** `(CarbonImmutable $start, CarbonImmutable $end): array<{date: string, category_id: int, cents: int}>`
 
-For each spending-kind category that is **not** referenced by any bill's `category_id`, compute the median daily spend over the trailing window (default 12 weeks). Distribute that daily amount across each day of `[$start, $end]`. Returns one entry per (date, category) for UI breakdown.
+For each spending-kind category, compute the median weekly spend over the trailing window (default 12 weeks), divide by 7 to get a per-day amount, and emit one entry per (date, category) across `[$start, $end]`.
+
+**Exclusion rule:** skip any category that is referenced by at least one row in `bills.category_id`. Those categories' spend is already represented by `ProjectBillCharges`; including them would double-count.
 
 Uses **median**, not mean, so a single $5k outlier doesn't dominate. Categories with fewer than 4 weeks of data return zero.
 
@@ -148,7 +150,7 @@ The early-when-comfortable behavior falls out naturally: if today already passes
 
 ### Interactions
 
-- Click any pill → MaryUI drawer slides in from the right showing bill detail, "Mark paid this period" button, and "Go to bill" link.
+- Click any pill → MaryUI `<x-drawer>` slides in from the right showing bill detail, "Mark paid this period" button, and "Go to bill" link.
 - `[<] [Today] [>]` paginate months. URL state: `/calendar?month=2026-07`.
 - Top-right month dropdown for jumping to arbitrary months.
 
@@ -228,27 +230,36 @@ Pest feature tests under `tests/Feature/`. No HTTP layer required for forecast a
 
 ### Forecast actions (≈ 25 tests)
 
-- `ProjectIncomeDepositsTest` — one test per cadence, plus day-clamping (anchor on Feb 30 → Feb 28/29), anchor-past-end-of-range (returns empty), and account-id propagation.
-- `ProjectBillChargesTest` — monthly + annual cadence, day clamping for short months, inclusion-of-paid (asserts paid bills still appear in the projection).
-- `ForecastVariableSpendTest` — median-not-mean (one $5k outlier doesn't blow up the result), excludes bill-tied categories, returns zero for categories with < 4 weeks of data, respects `forecast_lookback_weeks` AppSetting.
-- `ComputeProjectedBalanceTest` — end-to-end with seeded transactions + bills + income, asserts day-N balance matches hand-computed value.
+Under `tests/Unit/Actions/Finance/Forecast/`:
+
+- `ProjectIncomeDepositsTest` — one test per cadence (weekly / biweekly / semi_monthly / monthly), short-month day clamping (cadence advance from Jan 31 → Feb 28 or 29), anchor-past-end-of-range (returns empty), and account-id propagation.
+- `ProjectBillChargesTest` — monthly + annual cadence, day clamping for short months, inclusion-of-paid (paid bills still appear in the projection).
+- `ForecastVariableSpendTest` — median-not-mean (one $5k outlier doesn't blow up the result), excludes categories referenced by any bill, returns zero for categories with < 4 weeks of data, respects `forecast_lookback_weeks` AppSetting.
+- `ComputeProjectedBalanceTest` — end-to-end with seeded transactions + bills + income, asserts day-N balance matches a hand-computed value.
 - `RecommendPayDatesTest` — paid bills excluded, bill that fits today, bill that has to wait for paycheck, bill with no safe day (`warning: true`), per-account floor enforcement, today-is-safe (recommendation == today).
 
-### Calendar page (1 test)
+### Income action tests
 
-`CalendarPageTest`:
-- Seeds a user, one account, one paid bill, one unpaid bill with `recommended_date != due_date`.
-- `get('/calendar')` and assert paid bill renders with `opacity-50` + `✓`, unpaid bill renders on both due-date and recommended-date cells.
+Under `tests/Unit/Actions/Finance/Income/`:
 
-### Income CRUD (≈ 6 tests)
+- `CreateIncomeSourceTest`, `UpdateIncomeSourceTest`, `DeleteIncomeSourceTest` — mirror the existing `Bills` action tests.
+- `AdvanceIncomeAnchorTest` — covers all four cadences; semi_monthly test asserts it alternates between primary day and `secondary_day_of_month`.
+- `MatchIncomeToTransactionsTest` — substring match advances anchor; non-matching transactions are ignored; multiple sources don't conflict.
 
-Clone `BillsCrudTest` shape — create / update / delete / list / form-validation / cadence-specific (semi_monthly stores secondary day).
+### Page tests
 
-### Import hook (1 test)
+Under `tests/Feature/Pages/`:
 
-`IncomeAutoMatchTest` — import a CSV containing a `PAYROLL ALLAN MICHAEL` deposit; assert the matching `IncomeSource.next_expected_on` advanced by one cadence interval.
+- `Calendar/IndexTest.php` — seed user, account, one paid bill, one unpaid bill with `recommended_date != due_date`. `get('/calendar')` and assert paid bill renders with `opacity-50` + `✓`, unpaid bill renders on both due-date and recommended-date cells, side rail "Recommendation" surfaces the shifted date.
+- `Income/IndexTest.php`, `Income/FormTest.php`, `Income/ShowTest.php` — clone the shape of `Pages/Bills/*Test.php`. Cover list, create, edit, delete, semi_monthly secondary-day persistence.
 
-**Total new tests:** ~33.
+### Import hook
+
+Under `tests/Feature/Pages/Imports/` (or extend `WizardTest.php`):
+
+- New test: import a CSV containing a `PAYROLL ALLAN MICHAEL` deposit; assert the matching `IncomeSource.next_expected_on` advanced by one cadence interval.
+
+**Total new tests:** ~35.
 
 ## Out of Scope (deferred to Phase 6)
 
