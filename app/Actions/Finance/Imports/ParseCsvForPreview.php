@@ -3,14 +3,14 @@
 namespace App\Actions\Finance\Imports;
 
 use App\Models\Account;
-use App\Models\Category;
 use App\Models\Transaction;
+use App\Support\KeywordMatcher;
 use App\Support\TransactionHash;
 use Carbon\CarbonImmutable;
 
 class ParseCsvForPreview
 {
-    private ?Category $transferCategory = null;
+    private ?KeywordMatcher $matcher = null;
 
     /**
      * @param  array<string, mixed>  $profile
@@ -22,7 +22,7 @@ class ParseCsvForPreview
         $hasHeader = (bool) ($profile['has_header'] ?? true);
         $dateFormat = $profile['date_format'];
 
-        $this->transferCategory = Category::where('name', 'Transfer')->first();
+        $this->matcher = new KeywordMatcher;
 
         $handle = fopen($path, 'r');
         if ($handle === false) {
@@ -143,7 +143,7 @@ class ParseCsvForPreview
             ->where('dedup_hash', $hash)
             ->first();
 
-        $categoryId = $this->matchTransferCategory($rawDesc);
+        $categoryId = $this->matcher->match($rawDesc);
 
         return [
             'occurred_on' => $occurredOn,
@@ -154,22 +154,5 @@ class ParseCsvForPreview
             'status' => $duplicate ? 'duplicate' : 'new',
             'duplicate_of' => $duplicate?->id,
         ];
-    }
-
-    private function matchTransferCategory(string $description): ?int
-    {
-        $transfer = $this->transferCategory;
-        if (! $transfer) {
-            return null;
-        }
-
-        $lower = mb_strtolower($description);
-        foreach ($transfer->keywordList() as $keyword) {
-            if ($keyword && str_contains($lower, $keyword)) {
-                return $transfer->id;
-            }
-        }
-
-        return null;
     }
 }
