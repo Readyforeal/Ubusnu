@@ -74,20 +74,40 @@ it('honours alternative column names from the profile', function () {
     expect($rows[0]['amount_cents'])->toBe(-450);
 });
 
-it('auto-categorizes rows matching Transfer keywords', function () {
+it('auto-categorizes import rows against any category keywords', function () {
     $account = Account::factory()->create();
-    $transfer = Category::factory()->create([
-        'name' => 'Transfer',
-        'keywords' => 'transfer, tfr',
-        'excluded_from_totals' => true,
-    ]);
+    $coffee = Category::factory()->create(['name' => 'Coffee', 'keywords' => 'starbucks']);
+    $gas = Category::factory()->create(['name' => 'Gas', 'keywords' => 'shell']);
 
     $path = tempnam(sys_get_temp_dir(), 'csv');
-    file_put_contents($path, "Date,Description,Amount\n06/01/2026,E-Transfer to John,-100.00\n");
+    file_put_contents(
+        $path,
+        "Date,Description,Amount\n".
+        "06/01/2026,STARBUCKS #1234,-4.50\n".
+        "06/02/2026,SHELL OIL,-50.00\n".
+        "06/03/2026,MYSTERY VENDOR,-10.00\n"
+    );
 
     $rows = (new ParseCsvForPreview)($account, $path, $this->profile);
 
-    expect($rows[0]['category_id'])->toBe($transfer->id);
+    expect($rows[0]['category_id'])->toBe($coffee->id);
+    expect($rows[1]['category_id'])->toBe($gas->id);
+    expect($rows[2]['category_id'])->toBeNull();
+
+    unlink($path);
+});
+
+it('leaves a row uncategorized when two categories ambiguously match', function () {
+    $account = Account::factory()->create();
+    Category::factory()->create(['name' => 'Shopping', 'keywords' => 'target']);
+    Category::factory()->create(['name' => 'Groceries', 'keywords' => 'groceries']);
+
+    $path = tempnam(sys_get_temp_dir(), 'csv');
+    file_put_contents($path, "Date,Description,Amount\n06/01/2026,TARGET STORE - GROCERIES,-30.00\n");
+
+    $rows = (new ParseCsvForPreview)($account, $path, $this->profile);
+
+    expect($rows[0]['category_id'])->toBeNull();
 
     unlink($path);
 });
