@@ -20,6 +20,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('income', 'pages::income.index')->name('income.index');
     Route::livewire('income/{source}', 'pages::income.show')->name('income.show');
 
+    Route::livewire('calendar', 'pages::calendar.index')->name('calendar.index');
+
     Route::livewire('categories', 'pages::categories.index')->name('categories.index');
 
     Route::livewire('imports', 'pages::imports.index')->name('imports.index');
