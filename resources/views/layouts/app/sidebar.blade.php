@@ -34,6 +34,7 @@
                         <x-menu-item title="{{ __('Transactions') }}" icon="lucide.list" link="{{ route('transactions.index') }}" wire:navigate />
                         <x-menu-item title="{{ __('Budget') }}" icon="lucide.wallet-cards" link="{{ route('buckets.index') }}" wire:navigate />
                         <x-menu-item title="{{ __('Goals') }}" icon="lucide.target" link="{{ route('goals.index') }}" wire:navigate />
+                        <x-menu-item title="{{ __('Bills') }}" icon="lucide.calendar-clock" link="{{ route('bills.index') }}" wire:navigate />
                         <x-menu-item title="{{ __('Imports') }}" icon="lucide.upload" link="{{ route('imports.index') }}" wire:navigate />
                         <x-menu-item title="{{ __('Categories') }}" icon="lucide.tag" link="{{ route('categories.index') }}" wire:navigate />
 
