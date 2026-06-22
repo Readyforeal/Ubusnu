@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Bucket;
 use App\Models\Category;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -15,15 +16,29 @@ class CategoryFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->unique()->sentence(2, false),
+            'name' => $this->faker->unique()->words(2, true),
+            'kind' => 'spending',
+            'bucket_id' => null,
             'keywords' => null,
-            'excluded_from_totals' => false,
             'color' => null,
         ];
     }
 
-    public function excludedFromTotals(): static
+    public function incomeKind(): static
     {
-        return $this->state(['excluded_from_totals' => true]);
+        return $this->state(['kind' => 'income']);
+    }
+
+    public function transferKind(): static
+    {
+        return $this->state(['kind' => 'transfer']);
+    }
+
+    public function inBucket(Bucket $bucket): static
+    {
+        return $this->state([
+            'kind' => 'spending',
+            'bucket_id' => $bucket->id,
+        ]);
     }
 }

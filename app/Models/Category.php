@@ -6,9 +6,10 @@ use Database\Factories\CategoryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'keywords', 'excluded_from_totals', 'color'])]
+#[Fillable(['name', 'kind', 'bucket_id', 'keywords', 'color'])]
 class Category extends Model
 {
     /** @use HasFactory<CategoryFactory> */
@@ -17,13 +18,19 @@ class Category extends Model
     protected function casts(): array
     {
         return [
-            'excluded_from_totals' => 'boolean',
+            'kind' => 'string',
+            'bucket_id' => 'integer',
         ];
     }
 
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    public function bucket(): BelongsTo
+    {
+        return $this->belongsTo(Bucket::class);
     }
 
     /**
