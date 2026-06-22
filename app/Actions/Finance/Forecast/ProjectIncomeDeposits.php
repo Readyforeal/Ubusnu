@@ -62,6 +62,6 @@ class ProjectIncomeDeposits
 
     private function safeDay(CarbonImmutable $month, int $day): CarbonImmutable
     {
-        return $month->setDay(min($day, $month->daysInMonth));
+        return $month->setDay(max(1, min($day, $month->daysInMonth)));
     }
 }
