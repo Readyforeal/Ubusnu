@@ -195,3 +195,45 @@ it('matches an income source on import and advances its anchor', function () {
     // Anchor advanced by biweekly cadence: 2026-07-10 -> 2026-07-24
     expect($source->fresh()->next_expected_on->toDateString())->toBe('2026-07-24');
 });
+
+it('does not advance income anchor when re-importing a duplicate CSV', function () {
+    $account = Account::factory()->create([
+        'import_profile' => [
+            'delimiter' => ',',
+            'has_header' => true,
+            'date_column' => 'Date',
+            'date_format' => 'm/d/Y',
+            'description_column' => 'Description',
+            'amount_column' => 'Amount',
+        ],
+    ]);
+    $source = IncomeSource::factory()->create([
+        'account_id' => $account->id,
+        'cadence' => 'biweekly',
+        'next_expected_on' => '2026-07-10',
+        'match_description' => 'PAYROLL ALLAN MICHAEL',
+        'expected_amount_cents' => 250000,
+    ]);
+
+    $csv = "Date,Description,Amount\n07/10/2026,DIRECT DEP PAYROLL ALLAN MICHAEL 12345,2500.00\n";
+
+    // First import — anchor should advance once (2026-07-10 → 2026-07-24)
+    $file1 = UploadedFile::fake()->createWithContent('paycheck.csv', $csv);
+    Livewire::test('pages::imports.wizard')
+        ->set('accountId', $account->id)
+        ->set('upload', $file1)
+        ->call('proceedFromUpload')
+        ->call('runImport');
+
+    expect($source->fresh()->next_expected_on->toDateString())->toBe('2026-07-24');
+
+    // Second import of the SAME CSV — row is a duplicate, anchor must NOT advance again
+    $file2 = UploadedFile::fake()->createWithContent('paycheck.csv', $csv);
+    Livewire::test('pages::imports.wizard')
+        ->set('accountId', $account->id)
+        ->set('upload', $file2)
+        ->call('proceedFromUpload')
+        ->call('runImport');
+
+    expect($source->fresh()->next_expected_on->toDateString())->toBe('2026-07-24');
+});

@@ -64,7 +64,8 @@ class ImportTransactions
                 }
             }
 
-            $matchedIncomeSourceIds = array_values(array_unique(array_filter(array_column($rows, 'income_source_id'))));
+            $newRows = array_filter($rows, fn ($r) => ($r['status'] ?? null) === 'new');
+            $matchedIncomeSourceIds = array_values(array_unique(array_filter(array_column($newRows, 'income_source_id'))));
             foreach ($matchedIncomeSourceIds as $sourceId) {
                 $source = IncomeSource::find($sourceId);
                 if ($source) {
