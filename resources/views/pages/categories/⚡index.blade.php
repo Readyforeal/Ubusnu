@@ -1,13 +1,17 @@
 <?php
 
+use App\Actions\Finance\Categories\RecategorizeUncategorized;
 use App\Models\Category;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Mary\Traits\Toast;
 
 new #[Title('Categories')] class extends Component {
+    use Toast;
+
     public ?int $editingId = null;
 
     public function startEdit(int $id): void
@@ -22,6 +26,15 @@ new #[Title('Categories')] class extends Component {
         $this->editingId = null;
     }
 
+    public function recategorize(): void
+    {
+        $result = (new RecategorizeUncategorized)();
+
+        $this->success(
+            "Recategorized {$result['updated']} transactions. {$result['still_uncategorized']} still uncategorized."
+        );
+    }
+
     #[Computed]
     public function categories(): Collection
     {
@@ -30,9 +43,12 @@ new #[Title('Categories')] class extends Component {
 }; ?>
 
 <div class="space-y-4">
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between flex-wrap gap-2">
         <h1 class="text-2xl font-semibold">{{ __('Categories') }}</h1>
-        <x-button label="New category" icon="lucide.plus" class="btn-primary" wire:click="startEdit(0)" />
+        <div class="flex gap-2">
+            <x-button label="Recategorize uncategorized" icon="lucide.wand-2" class="btn-ghost" wire:click="recategorize" wire:loading.attr="disabled" />
+            <x-button label="New category" icon="lucide.plus" class="btn-primary" wire:click="startEdit(0)" />
+        </div>
     </div>
 
     @if ($editingId !== null)
