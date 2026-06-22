@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Account;
+use App\Models\Bill;
 use App\Models\Transaction;
 use App\Models\User;
 use Livewire\Livewire;
@@ -46,4 +47,21 @@ it('requires account, date, description, amount', function () {
         ->set('amountDollars', '')
         ->call('save')
         ->assertHasErrors(['accountId', 'occurredOn', 'description', 'amountDollars']);
+});
+
+it('persists bill_id when a bill is selected on the transaction form', function () {
+    $account = Account::factory()->create();
+    $bill = Bill::factory()->create();
+
+    Livewire::test('pages::transactions.form', ['transactionId' => 0])
+        ->set('accountId', $account->id)
+        ->set('occurredOn', '2026-06-15')
+        ->set('description', 'Mortgage Payment')
+        ->set('amountDollars', '-2300.00')
+        ->set('billId', $bill->id)
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $tx = Transaction::where('description', 'Mortgage Payment')->first();
+    expect($tx->bill_id)->toBe($bill->id);
 });

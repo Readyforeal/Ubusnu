@@ -3,6 +3,7 @@
 use App\Actions\Finance\Transactions\CreateTransaction;
 use App\Actions\Finance\Transactions\UpdateTransaction;
 use App\Models\Account;
+use App\Models\Bill;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Support\Money;
@@ -26,6 +27,8 @@ new class extends Component {
 
     public ?int $categoryId = null;
 
+    public ?int $billId = null;
+
     public ?string $notes = null;
 
     public function mount(int $transactionId): void
@@ -38,6 +41,7 @@ new class extends Component {
             $this->description = $tx->description;
             $this->amountDollars = number_format($tx->amount_cents / 100, 2, '.', '');
             $this->categoryId = $tx->category_id;
+            $this->billId = $tx->bill_id;
             $this->notes = $tx->notes;
         } else {
             $this->occurredOn = now()->toDateString();
@@ -56,6 +60,7 @@ new class extends Component {
                 'description' => $this->description,
                 'amount_cents' => $cents,
                 'category_id' => $this->categoryId,
+                'bill_id' => $this->billId,
                 'notes' => $this->notes,
             ]);
         } else {
@@ -67,6 +72,7 @@ new class extends Component {
                 amountCents: $cents,
                 categoryId: $this->categoryId,
                 notes: $this->notes,
+                billId: $this->billId,
             );
         }
 
@@ -83,6 +89,7 @@ new class extends Component {
         return [
             'accounts' => Account::active()->orderBy('name')->get(),
             'categories' => Category::orderBy('name')->get(),
+            'bills' => Bill::orderBy('name')->get(),
         ];
     }
 }; ?>
@@ -94,6 +101,7 @@ new class extends Component {
         <x-input label="Description" wire:model="description" class="md:col-span-2" />
         <x-input label="Amount (dollars, negative = out)" wire:model="amountDollars" placeholder="-12.50" />
         <x-select label="Category" :options="$categories" option-label="name" option-value="id" placeholder="Uncategorized" wire:model="categoryId" />
+        <x-select label="Bill (optional)" :options="$bills" option-label="name" option-value="id" placeholder="—" wire:model="billId" />
         <x-textarea label="Notes" wire:model="notes" class="md:col-span-2" rows="2" />
     </div>
     <div class="flex gap-2 justify-end mt-4">
