@@ -32,6 +32,7 @@
                         <x-menu-item title="{{ __('Dashboard') }}" icon="lucide.layout-dashboard" link="{{ route('dashboard') }}" wire:navigate />
                         <x-menu-item title="{{ __('Accounts') }}" icon="lucide.wallet" link="{{ route('accounts.index') }}" wire:navigate />
                         <x-menu-item title="{{ __('Transactions') }}" icon="lucide.list" link="{{ route('transactions.index') }}" wire:navigate />
+                        <x-menu-item title="{{ __('Budget') }}" icon="lucide.wallet-cards" link="{{ route('buckets.index') }}" wire:navigate />
                         <x-menu-item title="{{ __('Imports') }}" icon="lucide.upload" link="{{ route('imports.index') }}" wire:navigate />
                         <x-menu-item title="{{ __('Categories') }}" icon="lucide.tag" link="{{ route('categories.index') }}" wire:navigate />
 

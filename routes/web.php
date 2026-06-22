@@ -12,6 +12,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::livewire('transactions', 'pages::transactions.index')->name('transactions.index');
 
+    Route::livewire('buckets', 'pages::buckets.index')->name('buckets.index');
+
     Route::livewire('categories', 'pages::categories.index')->name('categories.index');
 
     Route::livewire('imports', 'pages::imports.index')->name('imports.index');
