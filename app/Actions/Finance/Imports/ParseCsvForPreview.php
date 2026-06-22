@@ -4,6 +4,7 @@ namespace App\Actions\Finance\Imports;
 
 use App\Models\Account;
 use App\Models\Transaction;
+use App\Support\BillMatcher;
 use App\Support\KeywordMatcher;
 use App\Support\TransactionHash;
 use Carbon\CarbonImmutable;
@@ -11,6 +12,8 @@ use Carbon\CarbonImmutable;
 class ParseCsvForPreview
 {
     private ?KeywordMatcher $matcher = null;
+
+    private ?BillMatcher $billMatcher = null;
 
     /**
      * @param  array<string, mixed>  $profile
@@ -23,6 +26,7 @@ class ParseCsvForPreview
         $dateFormat = $profile['date_format'];
 
         $this->matcher = new KeywordMatcher;
+        $this->billMatcher = new BillMatcher;
 
         $handle = fopen($path, 'r');
         if ($handle === false) {
@@ -144,6 +148,7 @@ class ParseCsvForPreview
             ->first();
 
         $categoryId = $this->matcher->match($rawDesc);
+        $billId = $this->billMatcher->match($rawDesc);
 
         return [
             'occurred_on' => $occurredOn,
@@ -151,6 +156,7 @@ class ParseCsvForPreview
             'amount_cents' => $amountCents,
             'dedup_hash' => $hash,
             'category_id' => $categoryId,
+            'bill_id' => $billId,
             'status' => $duplicate ? 'duplicate' : 'new',
             'duplicate_of' => $duplicate?->id,
         ];
