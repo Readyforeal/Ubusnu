@@ -38,7 +38,7 @@ new #[Title('Categories')] class extends Component {
     #[Computed]
     public function categories(): Collection
     {
-        return Category::orderBy('name')->get();
+        return Category::with('bucket')->orderBy('name')->get();
     }
 }; ?>
 
@@ -57,10 +57,23 @@ new #[Title('Categories')] class extends Component {
 
     <x-table :headers="[
         ['key' => 'name', 'label' => 'Name'],
-        ['key' => 'keywords', 'label' => 'Keywords'],
         ['key' => 'kind', 'label' => 'Kind'],
+        ['key' => 'bucket', 'label' => 'Bucket'],
+        ['key' => 'keywords', 'label' => 'Keywords'],
         ['key' => 'actions', 'label' => '', 'class' => 'w-20'],
     ]" :rows="$this->categories">
+        @scope('cell_kind', $row)
+            @if ($row->kind === 'spending')
+                <x-badge value="Spending" class="badge-info badge-sm" />
+            @elseif ($row->kind === 'income')
+                <x-badge value="Income" class="badge-success badge-sm" />
+            @else
+                <x-badge value="Transfer" class="badge-ghost badge-sm" />
+            @endif
+        @endscope
+        @scope('cell_bucket', $row)
+            {{ $row->bucket?->name ?? '—' }}
+        @endscope
         @scope('cell_actions', $row)
             <x-button icon="lucide.pencil" class="btn-ghost btn-sm" wire:click="startEdit({{ $row->id }})" />
         @endscope
