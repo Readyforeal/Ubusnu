@@ -1,0 +1,31 @@
+# Copy this to `compose.yml` on your homelab. Edit the image owner.
+# Initial setup:
+#   1. mkdir -p data backups
+#   2. cp .env.production.example .env  (then fill in APP_KEY)
+#   3. docker compose pull && docker compose up -d
+#   4. (optional) sudo tailscale serve --bg https / http://localhost:8080
+
+services:
+  ubusnu:
+    image: ghcr.io/CHANGEME/ubusnu:latest
+    restart: unless-stopped
+    ports:
+      # Bound to loopback; Tailscale Serve fronts it with HTTPS.
+      # If you skip Tailscale, change to "8080:8080" to expose on the LAN directly.
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./data:/var/www/data
+      - ./backups:/var/www/backups
+      - ./.env:/var/www/html/.env:ro
+    networks:
+      - default
+      - ollama-net   # external; create on your Ollama stack
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://127.0.0.1:8080/up"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  ollama-net:
+    external: true
