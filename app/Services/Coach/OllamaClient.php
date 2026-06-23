@@ -63,6 +63,11 @@ class OllamaClient
             ->withOptions(['stream' => true])
             ->post($url, $body);
 
+        if ($response->status() >= 400) {
+            $errorBody = (string) $response->toPsrResponse()->getBody();
+            throw new \RuntimeException("Ollama returned HTTP {$response->status()}: ".mb_substr($errorBody, 0, 200));
+        }
+
         $stream = $response->toPsrResponse()->getBody();
         $buffer = '';
         while (! $stream->eof()) {
