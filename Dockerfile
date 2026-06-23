@@ -32,6 +32,10 @@ RUN install-php-extensions \
     zip \
     opcache
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /var/www/html
 
 # App source
