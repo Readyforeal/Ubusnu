@@ -46,7 +46,9 @@ class DetectRecurringSubscriptions
             }
             $matchedBillId = null;
             foreach ($billMatches as $b) {
-                if (str_contains(strtoupper($g['token']), strtoupper((string) $b->match_description))) {
+                $tokenUp = strtoupper($g['token']);
+                $needleUp = strtoupper((string) $b->match_description);
+                if (str_contains($tokenUp, $needleUp) || str_contains($needleUp, $tokenUp)) {
                     $matchedBillId = (int) $b->id;
                     break;
                 }
