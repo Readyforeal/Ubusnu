@@ -36,8 +36,12 @@ class ChatLoop
         $toolCallsRecord = [];
         $assistantBuffer = '';
 
+        $messages = [['role' => 'system', 'content' => $systemPrompt]];
+        foreach ($thread->messages()->get() as $m) {
+            $messages[] = ['role' => $m->role, 'content' => $m->content];
+        }
+
         for ($round = 0; $round < $maxRounds; $round++) {
-            $messages = $this->buildMessages($thread, $systemPrompt);
             $stream = $this->ollama->stream($messages, $this->registry->toOllamaToolsArray());
 
             $roundContent = '';
@@ -104,6 +108,7 @@ class ChatLoop
                     'role' => 'tool',
                     'content' => (string) $resultJson,
                 ]);
+                $messages[] = ['role' => 'tool', 'content' => (string) $resultJson];
             }
         }
 
@@ -115,19 +120,6 @@ class ChatLoop
             'model' => $this->config->model(),
         ]);
         $thread->touchLastMessage();
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function buildMessages(ChatThread $thread, string $systemPrompt): array
-    {
-        $messages = [['role' => 'system', 'content' => $systemPrompt]];
-        foreach ($thread->messages()->get() as $m) {
-            $messages[] = ['role' => $m->role, 'content' => $m->content];
-        }
-
-        return $messages;
     }
 
     private function loadSystemPrompt(): string
