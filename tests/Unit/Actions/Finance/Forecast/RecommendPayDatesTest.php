@@ -4,6 +4,8 @@ use App\Actions\Finance\Forecast\ComputeProjectedBalance;
 use App\Actions\Finance\Forecast\RecommendPayDates;
 use App\Models\Account;
 use App\Models\Bill;
+use App\Models\Transaction;
+use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 
 function curve(int $accountId, CarbonImmutable $start, int $days, callable $balanceForDay): array
@@ -153,4 +155,37 @@ it('honors per-account minimum balance', function () {
 
     // High floor: today not safe (250k - 100k = 150k, < 200k floor) → warning
     expect($byBill[$billHigh->id]['warning'])->toBeTrue();
+});
+
+it('considers next due period, not today, when checking already-paid', function () {
+    $june = CarbonImmutable::create(2026, 6, 30);
+    Carbon::setTestNow($june);
+
+    try {
+        $acct = Account::factory()->create(['minimum_balance_cents' => 0]);
+        $bill = Bill::factory()->create([
+            'account_id' => $acct->id,
+            'cadence' => 'monthly',
+            'due_day_of_month' => 5, // next due = July 5
+            'expected_amount_cents' => 10000,
+        ]);
+
+        // June paid period (different from next due period of July)
+        Transaction::factory()->create([
+            'account_id' => $acct->id,
+            'bill_id' => $bill->id,
+            'occurred_on' => '2026-06-05',
+            'amount_cents' => -10000,
+        ]);
+
+        $projection = curve($acct->id, $june, 10, fn ($d) => 500000);
+
+        $result = (new RecommendPayDates)([$bill], $projection, $june, $june->addDays(10));
+
+        // July occurrence is NOT paid yet, so we should get a recommendation
+        expect($result)->not->toBe([]);
+        expect($result[0]['bill_id'])->toBe($bill->id);
+    } finally {
+        Carbon::setTestNow();
+    }
 });

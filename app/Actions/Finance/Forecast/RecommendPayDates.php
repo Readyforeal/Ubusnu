@@ -28,7 +28,7 @@ class RecommendPayDates
             if ($bill->account_id === null) {
                 continue;
             }
-            if ($this->isAlreadyPaid($bill, $today)) {
+            if ($this->isAlreadyPaid($bill)) {
                 continue;
             }
 
@@ -94,17 +94,18 @@ class RecommendPayDates
         return true;
     }
 
-    private function isAlreadyPaid(Bill $bill, CarbonImmutable $today): bool
+    private function isAlreadyPaid(Bill $bill): bool
     {
-        $period = $bill->cadence === 'annual' ? $today->format('Y') : $today->format('Y-m');
+        $next = $bill->nextDueDate();
+        $period = $bill->cadence === 'annual' ? $next->format('Y') : $next->format('Y-m');
 
         if (in_array($period, $bill->manuallyMarkedPeriods(), true)) {
             return true;
         }
 
         return $bill->transactions()
-            ->whereYear('occurred_on', $today->year)
-            ->when($bill->cadence !== 'annual', fn ($q) => $q->whereMonth('occurred_on', $today->month))
+            ->whereYear('occurred_on', $next->year)
+            ->when($bill->cadence !== 'annual', fn ($q) => $q->whereMonth('occurred_on', $next->month))
             ->exists();
     }
 }
