@@ -76,7 +76,15 @@ class RecommendPayDates
     {
         $cursor = $payDay;
         while ($cursor->lte($dueDate)) {
-            $balance = ($balanceByDate[$cursor->toDateString()] ?? 0) - $amount;
+            $balance = $balanceByDate[$cursor->toDateString()] ?? 0;
+
+            // Days BEFORE the due date: the bill hasn't been deducted yet in the projection,
+            // but we're considering paying it on $payDay, so subtract the bill amount.
+            // On the due date itself: the projection ALREADY includes the deduction.
+            if ($cursor->lt($dueDate)) {
+                $balance -= $amount;
+            }
+
             if ($balance < $floor) {
                 return false;
             }
