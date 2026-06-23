@@ -74,6 +74,6 @@ docker login ghcr.io -u <your-user> -p <a PAT with read:packages>
 ## Troubleshooting
 
 - **`/up` returns 500** — check `docker compose logs ubusnu`. Most likely `.env` is missing `APP_KEY` or the data volume isn't writable.
-- **Migrations fail on boot** — the container won't start. Look at the logs to see which migration broke; downgrade with `docker compose pull ghcr.io/...:sha-<previous>` and `up -d`.
+- **Migrations fail on boot** — the container won't start. Look at the logs to see which migration broke. To roll back: edit `compose.yml` and change the `image:` tag from `:latest` to `:sha-<previous-short-sha>` (you can find available tags at `https://github.com/<your-user>/ubusnu/pkgs/container/ubusnu`), then `docker compose pull && docker compose up -d`.
 - **Ollama unreachable** — verify `ollama-net` is shared, or change `OLLAMA_BASE_URL` to a Tailscale hostname.
 - **Disk filling up from backups** — drop `--keep` by overriding the schedule: edit `routes/console.php` and pass `->dailyAt('02:00')->arguments(['--keep' => '7'])` (or whatever count you want), then rebuild the image.
