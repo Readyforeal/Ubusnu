@@ -16,7 +16,7 @@ php artisan view:cache
 php artisan event:cache
 
 # Start the Laravel scheduler in the background (one tick per minute)
-( while true; do php artisan schedule:run --no-interaction >/dev/null 2>&1; sleep 60; done ) &
+( while true; do php artisan schedule:run --no-interaction >/dev/null; sleep 60; done ) &
 
 # Hand off to FrankenPHP
 exec frankenphp run --config /etc/frankenphp/Caddyfile
