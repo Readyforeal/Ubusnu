@@ -16,4 +16,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'password.confirm',
         ])
         ->name('security.edit');
+
+    Route::livewire('settings/coach', 'pages::settings.coach')->name('coach.edit');
 });
