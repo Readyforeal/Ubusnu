@@ -5,17 +5,23 @@ namespace App\Http\Controllers\Coach;
 use App\Http\Controllers\Controller;
 use App\Models\ChatThread;
 use App\Services\Coach\ChatLoop;
+use App\Services\Coach\CoachConfig;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StreamController extends Controller
 {
-    public function stream(Request $request, ChatThread $thread, ChatLoop $loop): StreamedResponse
+    public function stream(Request $request, ChatThread $thread, ChatLoop $loop, CoachConfig $config): Response
     {
         abort_unless($thread->user_id === $request->user()->id, 403);
 
         $message = (string) $request->input('message', '');
         abort_if($message === '', 422, 'message is required');
+
+        if (! $config->isConfigured()) {
+            return response()->json(['error' => 'Coach is not configured'], 503);
+        }
 
         return new StreamedResponse(function () use ($thread, $loop, $message) {
             foreach ($loop->run($thread, $message) as $event) {
