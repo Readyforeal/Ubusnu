@@ -37,6 +37,7 @@
                         <x-menu-item title="{{ __('Income') }}" icon="lucide.banknote" link="{{ route('income.index') }}" wire:navigate />
                         <x-menu-item title="{{ __('Bills') }}" icon="lucide.calendar-clock" link="{{ route('bills.index') }}" wire:navigate />
                         <x-menu-item title="{{ __('Calendar') }}" icon="lucide.calendar" link="{{ route('calendar.index') }}" wire:navigate />
+                        <x-menu-item title="{{ __('Coach') }}" icon="lucide.message-circle" link="{{ route('chat.index') }}" wire:navigate />
                         <x-menu-item title="{{ __('Imports') }}" icon="lucide.upload" link="{{ route('imports.index') }}" wire:navigate />
                         <x-menu-item title="{{ __('Categories') }}" icon="lucide.tag" link="{{ route('categories.index') }}" wire:navigate />
 
