@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Coach\StreamController;
+use App\Http\Controllers\Coach\ThreadController;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome')->name('home');
@@ -27,6 +29,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('imports', 'pages::imports.index')->name('imports.index');
     Route::livewire('imports/new', 'pages::imports.wizard')->name('imports.new');
     Route::livewire('imports/{batch}', 'pages::imports.show')->name('imports.show');
+
+    Route::livewire('chat', 'pages::chat.index')->name('chat.index');
+    Route::post('chat/threads', [ThreadController::class, 'store'])->name('chat.threads.store');
+    Route::post('chat/{thread}/stream', [StreamController::class, 'stream'])->name('chat.stream');
 });
 
 require __DIR__.'/settings.php';
