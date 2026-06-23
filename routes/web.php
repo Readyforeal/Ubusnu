@@ -27,6 +27,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('imports', 'pages::imports.index')->name('imports.index');
     Route::livewire('imports/new', 'pages::imports.wizard')->name('imports.new');
     Route::livewire('imports/{batch}', 'pages::imports.show')->name('imports.show');
+
+    Route::view('chat', 'welcome')->name('chat.index');
 });
 
 require __DIR__.'/settings.php';
