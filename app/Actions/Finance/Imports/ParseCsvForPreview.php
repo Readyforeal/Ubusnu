@@ -5,6 +5,7 @@ namespace App\Actions\Finance\Imports;
 use App\Models\Account;
 use App\Models\Transaction;
 use App\Support\BillMatcher;
+use App\Support\IncomeMatcher;
 use App\Support\KeywordMatcher;
 use App\Support\TransactionHash;
 use Carbon\CarbonImmutable;
@@ -14,6 +15,8 @@ class ParseCsvForPreview
     private ?KeywordMatcher $matcher = null;
 
     private ?BillMatcher $billMatcher = null;
+
+    private ?IncomeMatcher $incomeMatcher = null;
 
     /**
      * @param  array<string, mixed>  $profile
@@ -27,6 +30,7 @@ class ParseCsvForPreview
 
         $this->matcher = new KeywordMatcher;
         $this->billMatcher = new BillMatcher;
+        $this->incomeMatcher = new IncomeMatcher;
 
         $handle = fopen($path, 'r');
         if ($handle === false) {
@@ -149,6 +153,9 @@ class ParseCsvForPreview
 
         $categoryId = $this->matcher->match($rawDesc);
         $billId = $this->billMatcher->match($rawDesc);
+        $incomeSourceId = $amountCents > 0
+            ? $this->incomeMatcher?->match($rawDesc)
+            : null;
 
         return [
             'occurred_on' => $occurredOn,
@@ -157,6 +164,7 @@ class ParseCsvForPreview
             'dedup_hash' => $hash,
             'category_id' => $categoryId,
             'bill_id' => $billId,
+            'income_source_id' => $incomeSourceId,
             'status' => $duplicate ? 'duplicate' : 'new',
             'duplicate_of' => $duplicate?->id,
         ];

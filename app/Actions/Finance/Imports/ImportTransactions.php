@@ -2,8 +2,10 @@
 
 namespace App\Actions\Finance\Imports;
 
+use App\Actions\Finance\Income\AdvanceIncomeAnchor;
 use App\Models\Account;
 use App\Models\ImportBatch;
+use App\Models\IncomeSource;
 use App\Models\Transaction;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -51,6 +53,7 @@ class ImportTransactions
                         'amount_cents' => $row['amount_cents'],
                         'category_id' => $row['category_id'] ?? null,
                         'bill_id' => $row['bill_id'] ?? null,
+                        'income_source_id' => $row['income_source_id'] ?? null,
                         'dedup_hash' => $row['dedup_hash'],
                         'import_batch_id' => $batch->id,
                         'source' => 'import',
@@ -58,6 +61,15 @@ class ImportTransactions
                     $imported++;
                 } catch (UniqueConstraintViolationException) {
                     $errors++;
+                }
+            }
+
+            $newRows = array_filter($rows, fn ($r) => ($r['status'] ?? null) === 'new');
+            $matchedIncomeSourceIds = array_values(array_unique(array_filter(array_column($newRows, 'income_source_id'))));
+            foreach ($matchedIncomeSourceIds as $sourceId) {
+                $source = IncomeSource::find($sourceId);
+                if ($source) {
+                    (new AdvanceIncomeAnchor)($source);
                 }
             }
 

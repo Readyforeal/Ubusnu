@@ -16,6 +16,8 @@ new class extends Component {
 
     public string $startingBalanceDollars = '0';
 
+    public string $minimumBalanceDollars = '0';
+
     public bool $countsTowardGoals = false;
 
     public function mount(int $accountId): void
@@ -25,6 +27,7 @@ new class extends Component {
             $account = Account::findOrFail($accountId);
             $this->name = $account->name;
             $this->startingBalanceDollars = number_format($account->starting_balance_cents / 100, 2, '.', '');
+            $this->minimumBalanceDollars = number_format($account->minimum_balance_cents / 100, 2, '.', '');
             $this->countsTowardGoals = $account->counts_toward_goals;
         }
     }
@@ -33,6 +36,7 @@ new class extends Component {
     {
         $this->validate();
         $cents = Money::toCents($this->startingBalanceDollars);
+        $minimumCents = Money::toCents($this->minimumBalanceDollars);
 
         if ($this->accountId > 0) {
             $account = Account::findOrFail($this->accountId);
@@ -40,9 +44,10 @@ new class extends Component {
                 'name' => $this->name,
                 'starting_balance_cents' => $cents,
                 'counts_toward_goals' => $this->countsTowardGoals,
+                'minimum_balance_cents' => $minimumCents,
             ]);
         } else {
-            (new CreateAccount)($this->name, $cents, $this->countsTowardGoals);
+            (new CreateAccount)($this->name, $cents, $this->countsTowardGoals, $minimumCents);
         }
 
         $this->dispatch('account-saved');
@@ -67,6 +72,7 @@ new class extends Component {
     <div class="space-y-3">
         <x-input label="Name" wire:model="name" placeholder="Tangerine Chequing" />
         <x-input label="Starting balance (dollars)" wire:model="startingBalanceDollars" placeholder="0.00" hint="Negative is OK for credit cards" />
+        <x-input label="Minimum balance (dollars)" wire:model="minimumBalanceDollars" placeholder="0.00" hint="The pay-timing optimizer will not push the projected balance below this floor" />
         <x-checkbox label="Counts toward goals pool" wire:model="countsTowardGoals" />
         <div class="flex justify-between gap-2">
             @if ($accountId > 0)
