@@ -42,7 +42,7 @@ class BackupSqlite extends Command
 
         try {
             $pdo = new \PDO('sqlite:'.$source);
-            $pdo->exec("VACUUM INTO '".addslashes($tempPath)."'");
+            $pdo->exec("VACUUM INTO '".str_replace("'", "''", $tempPath)."'");
             unset($pdo);
 
             $bytes = (string) file_get_contents($tempPath);
