@@ -93,61 +93,68 @@ Alpine.data('chatThread', (initialThreadId, initialPrompt) => ({
         if (! this.text.trim() || this.sending) return;
         this.sending = true;
         const messageText = this.text;
-        this.text = '';
-        this.liveAssistant = '';
-        this.liveToolCalls = [];
+        try {
+            this.text = '';
+            this.liveAssistant = '';
+            this.liveToolCalls = [];
 
-        if (! this.threadId) {
-            const r = await fetch('/chat/threads', { method: 'POST', headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            }});
-            const data = await r.json();
-            this.threadId = data.id;
-            this.$dispatch('thread-created', this.threadId);
-        }
-
-        const url = '/chat/' + this.threadId + '/stream';
-        const resp = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            },
-            body: JSON.stringify({ message: messageText }),
-        });
-
-        const reader = resp.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            let nl;
-            while ((nl = buffer.indexOf('\n')) !== -1) {
-                const line = buffer.slice(0, nl).trim();
-                buffer = buffer.slice(nl + 1);
-                if (! line) continue;
-                try {
-                    const event = JSON.parse(line);
-                    if (event.type === 'token' && event.content) {
-                        this.liveAssistant += event.content;
-                        this.scrollToBottom();
-                    } else if (event.type === 'tool_call') {
-                        this.liveToolCalls.push({ id: this.liveToolCalls.length, name: event.tool_name });
-                    }
-                } catch (e) {}
+            if (! this.threadId) {
+                const r = await fetch('/chat/threads', { method: 'POST', headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                }});
+                if (!r.ok) throw new Error('thread create failed: ' + r.status);
+                const data = await r.json();
+                if (!data || !data.id) throw new Error('thread create returned no id');
+                this.threadId = data.id;
+                this.$dispatch('thread-created', this.threadId);
             }
-        }
 
-        this.sending = false;
-        this.liveAssistant = '';
-        this.liveToolCalls = [];
-        $wire.refreshMessages();
-        this.scrollToBottom();
+            const url = '/chat/' + this.threadId + '/stream';
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({ message: messageText }),
+            });
+            if (!resp.ok) throw new Error('stream failed: ' + resp.status);
+
+            const reader = resp.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                let nl;
+                while ((nl = buffer.indexOf('\n')) !== -1) {
+                    const line = buffer.slice(0, nl).trim();
+                    buffer = buffer.slice(nl + 1);
+                    if (! line) continue;
+                    try {
+                        const event = JSON.parse(line);
+                        if (event.type === 'token' && event.content) {
+                            this.liveAssistant += event.content;
+                            this.scrollToBottom();
+                        } else if (event.type === 'tool_call') {
+                            this.liveToolCalls.push({ id: this.liveToolCalls.length, name: event.tool_name });
+                        }
+                    } catch (e) {}
+                }
+            }
+        } catch (err) {
+            console.error('chat send failed:', err);
+            this.liveAssistant = '(Error: ' + (err.message || 'request failed') + ')';
+        } finally {
+            this.sending = false;
+            this.liveToolCalls = [];
+            $wire.refreshMessages();
+            this.scrollToBottom();
+        }
     },
 }));
 </script>
