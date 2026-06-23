@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 class TopMovers
 {
     /**
-     * @return array<int, array{category_id: int, name: string, current_cents: int, previous_cents: int, delta_pct: float, direction: string}>
+     * @return array<int, array{category_id: int, name: string, current_cents: int, previous_cents: int, delta_pct: float|null, direction: string, is_new_category: bool}>
      */
     public function __invoke(int $monthsBack = 1, int $limit = 5): array
     {
@@ -47,22 +47,20 @@ class TopMovers
             if ($curr === 0 && $prev === 0) {
                 continue;
             }
-            if ($prev === 0) {
-                $pct = 100.0;
-            } else {
-                $pct = round((($curr - $prev) / $prev) * 100, 2);
-            }
+            $isNew = ($prev === 0 && $curr > 0);
+            $pct = $isNew ? null : round((($curr - $prev) / max(1, $prev)) * 100, 2);
             $rows[] = [
                 'category_id' => (int) $id,
                 'name' => $name,
                 'current_cents' => $curr,
                 'previous_cents' => $prev,
-                'delta_pct' => (float) $pct,
-                'direction' => $pct >= 0 ? 'up' : 'down',
+                'delta_pct' => $pct,                  // null when new category
+                'direction' => $pct === null ? 'up' : ($pct >= 0 ? 'up' : 'down'),
+                'is_new_category' => $isNew,
             ];
         }
 
-        usort($rows, fn ($a, $b) => abs($b['delta_pct']) <=> abs($a['delta_pct']));
+        usort($rows, fn ($a, $b) => abs($b['delta_pct'] ?? 0) <=> abs($a['delta_pct'] ?? 0));
 
         return array_slice($rows, 0, $limit);
     }

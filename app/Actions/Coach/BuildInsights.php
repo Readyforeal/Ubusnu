@@ -26,6 +26,9 @@ class BuildInsights
 
         // Top movers
         foreach ((new TopMovers)() as $row) {
+            if ($row['delta_pct'] === null) {
+                continue;
+            }
             if ($row['delta_pct'] >= 100.0) {
                 $insights[] = new Insight('critical',
                     "{$row['name']} spending up {$row['delta_pct']}%",

@@ -34,7 +34,7 @@ it('returns categories ranked by largest absolute MoM delta', function () {
     expect($result[0]['previous_cents'])->toBe(10000);
 });
 
-it('marks new categories (no previous spend) as 100% direction=up', function () {
+it('marks new categories (no previous spend) with delta_pct=null', function () {
     $account = Account::factory()->create();
     $cat = Category::factory()->create(['kind' => 'spending']);
     Transaction::factory()->create(['account_id' => $account->id, 'category_id' => $cat->id, 'occurred_on' => '2026-07-05', 'amount_cents' => -5000]);
@@ -42,7 +42,8 @@ it('marks new categories (no previous spend) as 100% direction=up', function () 
     $result = (new TopMovers)();
 
     expect($result[0]['previous_cents'])->toBe(0);
-    expect($result[0]['delta_pct'])->toBe(100.0);
+    expect($result[0]['delta_pct'])->toBeNull();
+    expect($result[0]['is_new_category'])->toBeTrue();
     expect($result[0]['direction'])->toBe('up');
 });
 
