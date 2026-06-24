@@ -56,20 +56,18 @@ new #[Title('Accounts')] class extends Component {
 
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         @foreach ($this->accounts as $row)
-            <a href="{{ route('accounts.show', $row['model']) }}" wire:navigate class="block">
-                <x-card class="border border-base-300 hover:shadow-md transition-shadow">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <div class="font-semibold">{{ $row['model']->name }}</div>
-                            <div class="text-2xl mt-1">{{ \App\Support\Money::format($row['balance_cents']) }}</div>
-                        </div>
-                        <x-button icon="lucide.pencil" class="btn-ghost btn-sm" @click.stop.prevent="$wire.startEdit({{ $row['model']->id }})" />
-                    </div>
-                    @if ($row['model']->counts_toward_goals)
-                        <x-badge value="Goals pool" class="badge-info mt-2" />
-                    @endif
-                </x-card>
-            </a>
+            <x-card class="border border-base-300 hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start gap-2">
+                    <a href="{{ route('accounts.show', $row['model']) }}" wire:navigate class="flex-1 min-w-0">
+                        <div class="font-semibold truncate">{{ $row['model']->name }}</div>
+                        <div class="text-2xl mt-1">{{ \App\Support\Money::format($row['balance_cents']) }}</div>
+                    </a>
+                    <x-button icon="lucide.pencil" class="btn-ghost btn-sm shrink-0" wire:click="startEdit({{ $row['model']->id }})" />
+                </div>
+                @if ($row['model']->counts_toward_goals)
+                    <x-badge value="Goals pool" class="badge-info mt-2" />
+                @endif
+            </x-card>
         @endforeach
     </div>
 </div>
