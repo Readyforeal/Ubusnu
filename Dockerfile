@@ -1,16 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-# ----- Stage 1: frontend -----
-FROM node:22-alpine AS frontend
-WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm ci
-COPY vite.config.* tailwind.config.* postcss.config.* ./
-COPY resources ./resources
-COPY public ./public
-RUN npm run build
-
-# ----- Stage 2: vendor -----
+# ----- Stage 1: vendor -----
 FROM composer:2 AS vendor
 WORKDIR /app
 COPY composer.json composer.lock ./
@@ -20,6 +10,19 @@ RUN composer install \
     --optimize-autoloader \
     --no-scripts \
     --no-interaction
+
+# ----- Stage 2: frontend -----
+# Needs vendor/ available so Tailwind's @source can scan MaryUI's PHP templates
+# for utility classes used inside vendor component markup.
+FROM node:22-alpine AS frontend
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm ci
+COPY vite.config.* tailwind.config.* postcss.config.* ./
+COPY resources ./resources
+COPY public ./public
+COPY --from=vendor /app/vendor ./vendor
+RUN npm run build
 
 # ----- Stage 3: runtime -----
 FROM dunglas/frankenphp:1-php8.4-bookworm
@@ -41,10 +44,10 @@ WORKDIR /var/www/html
 # App source
 COPY . .
 
-# Composer vendor from stage 2
+# Composer vendor from stage 1
 COPY --from=vendor /app/vendor ./vendor
 
-# Built frontend assets from stage 1
+# Built frontend assets from stage 2
 COPY --from=frontend /app/public/build ./public/build
 
 # Caddyfile + entrypoint
