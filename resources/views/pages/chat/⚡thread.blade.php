@@ -37,15 +37,15 @@ new class extends Component {
 }; ?>
 
 <div class="flex flex-col h-full" x-data="chatThread({{ $threadId ?? 'null' }}, @js($initialPrompt))" x-init="init()" wire:ignore.self>
-    <div class="flex-1 overflow-y-auto p-4 space-y-3" x-ref="messages">
+    <div class="flex-1 overflow-y-auto p-4 space-y-1" x-ref="messages">
         @foreach ($this->messages as $msg)
             @if ($msg->role === 'user')
-                <div class="flex justify-end">
-                    <div class="max-w-prose bg-primary text-primary-content rounded-lg px-3 py-2 text-sm">{{ $msg->content }}</div>
+                <div class="chat chat-end">
+                    <div class="chat-bubble chat-bubble-primary text-sm">{{ $msg->content }}</div>
                 </div>
             @elseif ($msg->role === 'assistant')
-                <div class="flex justify-start">
-                    <div class="max-w-prose bg-base-200 rounded-lg px-3 py-2 text-sm whitespace-pre-wrap">{{ $msg->content }}
+                <div class="chat chat-start">
+                    <div class="chat-bubble text-sm whitespace-pre-wrap">{{ $msg->content }}
                         @if ($msg->tool_calls)
                             <div class="text-xs opacity-60 mt-1">
                                 @foreach ($msg->tool_calls as $tc)
@@ -59,14 +59,14 @@ new class extends Component {
         @endforeach
 
         <template x-for="msg in optimisticUserMessages" :key="msg.id">
-            <div class="flex justify-end">
-                <div class="max-w-prose bg-primary text-primary-content rounded-lg px-3 py-2 text-sm" x-text="msg.text"></div>
+            <div class="chat chat-end">
+                <div class="chat-bubble chat-bubble-primary text-sm" x-text="msg.text"></div>
             </div>
         </template>
 
         <template x-if="sending && liveAssistant === '' && liveToolCalls.length === 0">
-            <div class="flex justify-start">
-                <div class="max-w-prose bg-base-200 rounded-lg px-3 py-2 text-sm opacity-70 flex items-center gap-2">
+            <div class="chat chat-start">
+                <div class="chat-bubble text-sm opacity-70 flex items-center gap-2">
                     <span class="loading loading-dots loading-sm"></span>
                     <span>Coach is thinking…</span>
                 </div>
@@ -74,8 +74,8 @@ new class extends Component {
         </template>
 
         <template x-if="liveAssistant !== ''">
-            <div class="flex justify-start">
-                <div class="max-w-prose bg-base-200 rounded-lg px-3 py-2 text-sm whitespace-pre-wrap" x-text="liveAssistant"></div>
+            <div class="chat chat-start">
+                <div class="chat-bubble text-sm whitespace-pre-wrap" x-text="liveAssistant"></div>
             </div>
         </template>
 
@@ -84,16 +84,30 @@ new class extends Component {
         </template>
     </div>
 
-    <div class="p-3 border-t border-base-300 flex gap-2">
-        <input
-            type="text"
-            x-model="text"
-            placeholder="Ask the coach..."
-            class="input input-bordered flex-1"
-            :disabled="sending"
-            @keydown.enter.prevent="send"
-        />
-        <button type="button" class="btn btn-primary" :disabled="sending || ! text.trim()" @click="send" x-text="sending ? '…' : 'Send'"></button>
+    <div class="p-3">
+        <div class="relative rounded-lg backdrop-blur-lg bg-base-100/70 shadow-lg border border-base-300/40">
+            <textarea
+                x-model="text"
+                x-ref="composer"
+                x-effect="text === '' && $refs.composer && ($refs.composer.style.height = 'auto')"
+                rows="1"
+                placeholder="Ask the coach..."
+                :disabled="sending"
+                @input="$el.style.height = 'auto'; $el.style.height = Math.min($el.scrollHeight, 200) + 'px'"
+                @keydown.enter.prevent="if (! $event.shiftKey) { send() }"
+                class="w-full bg-transparent border-0 focus:outline-none focus:ring-0 resize-none px-4 py-3 pr-14 text-sm leading-relaxed min-h-[3rem] max-h-[12rem]"
+            ></textarea>
+            <button
+                type="button"
+                class="btn btn-primary btn-sm btn-circle absolute right-2 bottom-2"
+                :disabled="sending || ! text.trim()"
+                @click="send"
+                aria-label="Send"
+            >
+                <span x-show="!sending"><x-icon name="lucide.arrow-up" class="w-4 h-4" /></span>
+                <span x-show="sending" x-cloak><span class="loading loading-spinner loading-xs"></span></span>
+            </button>
+        </div>
     </div>
 </div>
 
