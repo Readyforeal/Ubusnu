@@ -22,4 +22,9 @@ class CoachConfig
     {
         return (string) (AppSetting::current()->ollama_model ?: 'llama3.1:8b');
     }
+
+    public function useTools(): bool
+    {
+        return (bool) AppSetting::current()->coach_use_tools;
+    }
 }

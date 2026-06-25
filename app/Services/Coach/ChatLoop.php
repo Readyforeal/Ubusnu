@@ -31,7 +31,10 @@ class ChatLoop
             $thread->update(['title' => mb_substr($userMessage, 0, 60)]);
         }
 
-        $systemPrompt = $this->loadSystemPrompt();
+        $useTools = $this->config->useTools();
+        $systemPrompt = $this->loadSystemPrompt($useTools);
+        $tools = $useTools ? $this->registry->toOllamaToolsArray() : [];
+
         $maxRounds = 5;
         $toolCallsRecord = [];
         $assistantBuffer = '';
@@ -42,7 +45,7 @@ class ChatLoop
         }
 
         for ($round = 0; $round < $maxRounds; $round++) {
-            $stream = $this->ollama->stream($messages, $this->registry->toOllamaToolsArray());
+            $stream = $this->ollama->stream($messages, $tools);
 
             $roundContent = '';
             $roundToolCalls = [];
@@ -65,6 +68,14 @@ class ChatLoop
 
             if ($roundToolCalls === []) {
                 $assistantBuffer .= $roundContent;
+
+                // Defensive: small models often emit tool-call-shaped JSON as
+                // content text instead of using the proper tool_calls field.
+                // Detect and rewrite to a friendly message rather than show raw JSON.
+                if ($this->looksLikeToolCallJson($assistantBuffer)) {
+                    $assistantBuffer = $this->toolCallFallbackMessage();
+                }
+
                 ChatMessage::create([
                     'chat_thread_id' => $thread->id,
                     'role' => 'assistant',
@@ -122,10 +133,37 @@ class ChatLoop
         $thread->touchLastMessage();
     }
 
-    private function loadSystemPrompt(): string
+    private function loadSystemPrompt(bool $useTools): string
     {
+        if (! $useTools) {
+            return 'You are a personal finance coach for the Ubusnu app. Reply to the user conversationally in plain English. Do NOT emit JSON. Do NOT try to call any tool — there are no tools available to you this turn. Answer general questions, offer guidance, and ask clarifying questions when the user is vague. Be concise.';
+        }
+
         $path = resource_path('prompts/coach.md');
 
         return is_file($path) ? (string) file_get_contents($path) : 'You are a helpful financial coach.';
+    }
+
+    /**
+     * True when the entire content is a single JSON object that looks like a
+     * tool-call attempt — e.g. {"name": "...", "parameters": {...}}.
+     */
+    private function looksLikeToolCallJson(string $content): bool
+    {
+        $trimmed = trim($content);
+        if ($trimmed === '' || $trimmed[0] !== '{') {
+            return false;
+        }
+        $decoded = json_decode($trimmed, true);
+        if (! is_array($decoded)) {
+            return false;
+        }
+
+        return array_key_exists('name', $decoded) && array_key_exists('parameters', $decoded);
+    }
+
+    private function toolCallFallbackMessage(): string
+    {
+        return "I tried to call an internal tool but couldn't produce a real answer. This usually means the model is too small for tool calling. Try a larger model (llama3.1:8b or bigger), or turn off tool calling in /settings/coach for general conversation.";
     }
 }

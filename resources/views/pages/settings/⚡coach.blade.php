@@ -13,6 +13,8 @@ new #[Title('Coach settings')] class extends Component {
     #[Validate('nullable|string|max:64')]
     public string $modelName = '';
 
+    public bool $useTools = false;
+
     public ?string $testResult = null;
 
     public function mount(): void
@@ -20,6 +22,7 @@ new #[Title('Coach settings')] class extends Component {
         $setting = AppSetting::current();
         $this->baseUrl = (string) ($setting->ollama_base_url ?? '');
         $this->modelName = (string) ($setting->ollama_model ?? '');
+        $this->useTools = (bool) $setting->coach_use_tools;
     }
 
     public function save(): void
@@ -28,6 +31,7 @@ new #[Title('Coach settings')] class extends Component {
         AppSetting::current()->update([
             'ollama_base_url' => $this->baseUrl ?: null,
             'ollama_model' => $this->modelName ?: null,
+            'coach_use_tools' => $this->useTools,
         ]);
         $this->dispatch('coach-saved');
     }
@@ -55,7 +59,9 @@ new #[Title('Coach settings')] class extends Component {
     <x-pages::settings.layout :heading="__('Coach')" :subheading="__('Connect to a local Ollama instance')">
         <x-form wire:submit="save" class="space-y-3">
             <x-input label="Ollama base URL" wire:model="baseUrl" placeholder="http://homelab.local:11434" hint="Leave blank to disable the coach. The Insights widget on the dashboard still works." />
-            <x-input label="Model name" wire:model="modelName" placeholder="llama3.1:8b" hint="Any tool-capable model installed on your Ollama instance." />
+            <x-input label="Model name" wire:model="modelName" placeholder="llama3.1:8b" hint="Any model installed on your Ollama instance. For tool calling, llama3.1:8b is the minimum recommended." />
+
+            <x-checkbox label="Enable tool calling" wire:model="useTools" hint="When ON, the coach can call analytics tools (top movers, anomalies, budget variance, etc.) to ground answers in your data. Only works with tool-capable models — smaller models will emit raw JSON. Leave OFF for general Q&A with any model." />
 
             <div class="flex gap-2">
                 <x-button label="Save" type="submit" class="btn-primary" />
