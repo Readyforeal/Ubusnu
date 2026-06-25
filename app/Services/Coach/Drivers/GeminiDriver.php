@@ -83,6 +83,12 @@ class GeminiDriver implements CoachDriver
                 }
 
                 if (($decoded['candidates'][0]['finishReason'] ?? null) !== null) {
+                    if (isset($decoded['usageMetadata'])) {
+                        yield StreamChunk::usage(
+                            (int) ($decoded['usageMetadata']['promptTokenCount'] ?? 0),
+                            (int) ($decoded['usageMetadata']['candidatesTokenCount'] ?? 0),
+                        );
+                    }
                     yield StreamChunk::done();
 
                     return;
@@ -100,6 +106,12 @@ class GeminiDriver implements CoachDriver
                     yield $chunk;
                 }
                 if (($decoded['candidates'][0]['finishReason'] ?? null) !== null) {
+                    if (isset($decoded['usageMetadata'])) {
+                        yield StreamChunk::usage(
+                            (int) ($decoded['usageMetadata']['promptTokenCount'] ?? 0),
+                            (int) ($decoded['usageMetadata']['candidatesTokenCount'] ?? 0),
+                        );
+                    }
                     yield StreamChunk::done();
 
                     return;
@@ -127,13 +139,6 @@ class GeminiDriver implements CoachDriver
                     arguments: $part['functionCall']['args'] ?? [],
                 );
             }
-        }
-
-        if (isset($decoded['usageMetadata'])) {
-            yield StreamChunk::usage(
-                (int) ($decoded['usageMetadata']['promptTokenCount'] ?? 0),
-                (int) ($decoded['usageMetadata']['candidatesTokenCount'] ?? 0),
-            );
         }
     }
 

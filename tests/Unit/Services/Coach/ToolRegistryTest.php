@@ -18,22 +18,6 @@ it('registers and finds tools by name', function () {
     expect($registry->find('unknown'))->toBeNull();
 });
 
-it('exposes Ollama-shaped tool schemas', function () {
-    $registry = new ToolRegistry;
-    $registry->register(new CoachTool(
-        name: 'echo',
-        description: 'echo back',
-        parameters: ['type' => 'object', 'properties' => ['x' => ['type' => 'string']]],
-        kind: 'read',
-        requiresConfirmation: false,
-        handler: fn (array $args) => $args,
-    ));
-
-    $schemas = $registry->toOllamaToolsArray();
-    expect($schemas[0]['type'])->toBe('function');
-    expect($schemas[0]['function']['name'])->toBe('echo');
-});
-
 it('registers all 8 analytics tools on container boot', function () {
     $registry = app(ToolRegistry::class);
     $names = collect($registry->all())->pluck('name')->all();

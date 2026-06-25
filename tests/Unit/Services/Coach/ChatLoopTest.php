@@ -33,6 +33,31 @@ function fakeDriver(array $rounds): CoachDriver
     };
 }
 
+function fakeDriverCapturing(array $rounds, array &$capturedMessages): CoachDriver
+{
+    return new class($rounds, $capturedMessages) implements CoachDriver
+    {
+        private int $round = 0;
+
+        public function __construct(private readonly array $rounds, private array &$captured) {}
+
+        public function name(): string
+        {
+            return 'fake';
+        }
+
+        public function stream(array $messages, array $tools): Generator
+        {
+            $this->captured[$this->round] = $messages;
+            $chunks = $this->rounds[$this->round] ?? [StreamChunk::done()];
+            $this->round++;
+            foreach ($chunks as $chunk) {
+                yield $chunk;
+            }
+        }
+    };
+}
+
 beforeEach(function () {
     AppSetting::current()->update(['coach_provider' => 'gemini', 'coach_model' => 'gemini-2.5-flash']);
 });
@@ -137,4 +162,35 @@ it('persists partial content and error suffix on driver failure', function () {
     $assistant = $thread->messages()->where('role', 'assistant')->first();
     expect($assistant->content)->toStartWith('half-');
     expect($assistant->content)->toContain('connection refused');
+});
+
+it('threads tool_use_id into the messages array passed to the driver on the second round', function () {
+    AppSetting::current()->update(['coach_use_tools' => true]);
+
+    $thread = ChatThread::factory()->create();
+    $registry = new ToolRegistry;
+    $registry->register(new CoachTool(
+        name: 'ping',
+        description: 'ping',
+        parameters: ['type' => 'object'],
+        kind: 'read',
+        requiresConfirmation: false,
+        handler: fn (array $args) => ['pong' => true],
+    ));
+
+    $captured = [];
+    $driver = fakeDriverCapturing([
+        [StreamChunk::toolCall('toolu_01abc', 'ping', []), StreamChunk::done()],
+        [StreamChunk::text('done'), StreamChunk::done()],
+    ], $captured);
+
+    $loop = new ChatLoop($driver, $registry, new CoachConfig);
+    iterator_to_array($loop->run($thread, 'ping please'));
+
+    // The second round (index 1) should contain the tool result message with the correct tool_use_id.
+    $round2Messages = $captured[1] ?? [];
+    $toolMessage = collect($round2Messages)->firstWhere('role', 'tool');
+
+    expect($toolMessage)->not->toBeNull();
+    expect($toolMessage['tool_use_id'])->toBe('toolu_01abc');
 });

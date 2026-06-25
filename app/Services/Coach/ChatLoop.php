@@ -77,6 +77,7 @@ class ChatLoop
                 foreach ($roundToolCalls as $tc) {
                     $name = $tc['name'];
                     $args = $tc['arguments'];
+                    $toolCallId = $tc['id'] ?? null;
                     $tool = $this->registry->find($name);
 
                     if (! $tool) {
@@ -105,7 +106,7 @@ class ChatLoop
                         'role' => 'tool',
                         'content' => (string) $resultJson,
                     ]);
-                    $messages[] = ['role' => 'tool', 'content' => (string) $resultJson];
+                    $messages[] = ['role' => 'tool', 'content' => (string) $resultJson, 'tool_use_id' => $toolCallId];
                 }
             }
 

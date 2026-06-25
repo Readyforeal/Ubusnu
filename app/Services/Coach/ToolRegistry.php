@@ -24,12 +24,4 @@ class ToolRegistry
     {
         return $this->tools[$name] ?? null;
     }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    public function toOllamaToolsArray(): array
-    {
-        return array_map(fn (CoachTool $t) => $t->toOllamaToolSchema(), $this->all());
-    }
 }

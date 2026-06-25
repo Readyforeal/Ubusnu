@@ -167,7 +167,7 @@ class AnthropicDriver implements CoachDriver
                     'role' => 'user',
                     'content' => [[
                         'type' => 'tool_result',
-                        'tool_use_id' => 'anthropic-tool-result',
+                        'tool_use_id' => $m['tool_use_id'] ?? 'anthropic-tool-result',
                         'content' => $m['content'],
                     ]],
                 ];
