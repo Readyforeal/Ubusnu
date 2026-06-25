@@ -3,10 +3,10 @@
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen font-sans antialiased bg-base-200/50">
+    <body class="h-dvh overflow-hidden font-sans antialiased bg-gradient-to-br from-base-100 to-base-300">
 
         {{-- NAVBAR mobile only --}}
-        <x-nav sticky class="lg:hidden">
+        <x-nav sticky class="lg:hidden !bg-base-100/70 backdrop-blur-lg">
             <x-slot:brand>
                 <x-app-logo />
             </x-slot:brand>
@@ -20,7 +20,7 @@
         {{-- MAIN --}}
         <x-main full-width>
             {{-- SIDEBAR --}}
-            <x-slot:sidebar drawer="main-drawer" collapsible class="bg-base-100">
+            <x-slot:sidebar drawer="main-drawer" class="bg-base-100 sm:bg-transparent z-50!" collapsible>
 
                 <div class="flex flex-col h-full">
                     {{-- BRAND --}}
@@ -69,10 +69,10 @@
             </x-slot:sidebar>
 
             {{-- The $slot goes here --}}
-            <x-slot:content>
+            <x-slot:content class="{{ request()->routeIs('chat.index') ? 'p-0! sm:p-3!' : 'p-3! sm:p-0!' }}">
                 {{-- Extra bottom padding on mobile so the floating dock
                      doesn't cover the last items in the scroll area. --}}
-                <div class="h-full md:pb-0">
+                <div class="h-full {{ request()->routeIs('chat.index') ? '' : 'pb-28' }} md:pb-0">
                     {{ $slot }}
                 </div>
             </x-slot:content>
@@ -82,7 +82,7 @@
         <x-toast />
 
         {{-- MOBILE BOTTOM DOCK (phone only — hidden md and up) --}}
-        <nav class="md:hidden fixed bottom-3 inset-x-3 z-50 rounded-2xl bg-base-100/70 backdrop-blur-lg shadow-lg p-3 flex justify-around items-center">
+        <nav class="md:hidden fixed bottom-3 inset-x-3 z-40 rounded-2xl bg-base-100/70 backdrop-blur-lg shadow-lg p-3 flex justify-around items-center">
             @php
                 $dockItems = [
                     ['label' => __('Dashboard'), 'icon' => 'lucide.layout-dashboard', 'route' => 'dashboard'],

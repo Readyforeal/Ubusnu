@@ -51,12 +51,21 @@ new #[Title('Coach')] class extends Component {
     }
 }; ?>
 
-<div class="grid grid-cols-[260px_1fr] gap-4 h-full">
-    <aside class="border border-base-300 rounded-lg p-3 overflow-y-auto">
-        <x-button label="+ New chat" class="btn-primary btn-sm w-full mb-3" wire:click="newThread" />
+<div x-data="{ drawerOpen: false }" class="md:grid md:grid-cols-[260px_1fr] md:gap-4 h-full relative">
+    {{-- Chat list — column on md+, off-canvas drawer on small screens --}}
+    <aside
+        x-cloak
+        @keydown.escape.window="drawerOpen = false"
+        :class="drawerOpen ? 'translate-x-0' : '-translate-x-full'"
+        class="
+            fixed inset-y-0 left-0 z-50 w-72 bg-base-100 p-3 overflow-y-auto shadow-xl transition-transform
+            md:static md:inset-auto md:translate-x-0 md:w-auto md:shadow-none md:bg-transparent md:border md:border-base-300 md:rounded-lg md:transition-none
+        "
+    >
+        <x-button label="+ New chat" class="btn-primary btn-sm w-full mb-3" @click="drawerOpen = false" wire:click="newThread" />
         @forelse ($threads as $t)
             <div class="group flex items-center gap-1 p-1 rounded text-sm hover:bg-base-200 {{ $threadId === $t->id ? 'bg-base-200' : '' }}">
-                <button type="button" wire:click="selectThread({{ $t->id }})" class="flex-1 min-w-0 text-left">
+                <button type="button" @click="drawerOpen = false" wire:click="selectThread({{ $t->id }})" class="flex-1 min-w-0 text-left">
                     <div class="font-medium truncate">{{ $t->title }}</div>
                     <div class="text-xs opacity-50">{{ $t->last_message_at?->diffForHumans() }}</div>
                 </button>
@@ -75,7 +84,35 @@ new #[Title('Coach')] class extends Component {
         @endforelse
     </aside>
 
-    <main class="flex flex-col overflow-hidden">
+    {{-- Mobile-only drawer backdrop --}}
+    <div
+        x-show="drawerOpen"
+        x-cloak
+        @click="drawerOpen = false"
+        x-transition.opacity
+        class="md:hidden fixed inset-0 z-40 bg-black/40"
+    ></div>
+
+    <main class="flex flex-col overflow-hidden h-full relative">
+        {{-- Mobile floating action buttons. Two separate circles, no bar
+             between them. Chat content scrolls behind. --}}
+        <button
+            type="button"
+            @click="drawerOpen = true"
+            class="md:hidden absolute top-3 left-3 z-20 size-10 rounded-full flex items-center justify-center"
+            aria-label="Open chat list"
+        >
+            <x-icon name="lucide.menu" class="w-5 h-5" />
+        </button>
+        <button
+            type="button"
+            wire:click="newThread"
+            class="md:hidden absolute top-3 right-3 z-20 size-10 rounded-full flex items-center justify-center"
+            aria-label="New chat"
+        >
+            <x-icon name="lucide.plus" class="w-5 h-5" />
+        </button>
+
         @if (! $isConfigured)
             <div class="flex-1 flex items-center justify-center p-8 text-center">
                 <div>
