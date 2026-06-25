@@ -102,7 +102,10 @@ class ChatLoop
                     } else {
                         try {
                             $result = ($tool->handler)(is_array($args) ? $args : []);
-                            $resultJson = json_encode($result);
+                            // Convert internal *_cents fields to *_dollars before
+                            // handing to the model — small models read 33694 as
+                            // $33,694 instead of $336.94.
+                            $resultJson = json_encode($this->convertCentsToDollars($result));
                         } catch (\Throwable $e) {
                             $resultJson = json_encode(['error' => $e->getMessage()]);
                         }
@@ -187,5 +190,34 @@ class ChatLoop
     private function toolCallFallbackMessage(): string
     {
         return "I tried to call an internal tool but couldn't produce a real answer. This usually means the model is too small for tool calling. Try a larger model (llama3.1:8b or bigger), or turn off tool calling in /settings/coach for general conversation.";
+    }
+
+    /**
+     * Recursively replace any `*_cents` integer fields with `*_dollars` floats
+     * so the model sees natural money values instead of an integer it may
+     * misread as dollars.
+     */
+    private function convertCentsToDollars(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        $out = [];
+        foreach ($value as $key => $v) {
+            if (is_string($key) && str_ends_with($key, '_cents') && is_numeric($v)) {
+                $newKey = substr($key, 0, -6).'_dollars';
+                // Cast to float so the JSON has decimals even for round dollar
+                // amounts ($54 → 54.0), helping the model see this as a money
+                // value rather than an integer count.
+                $out[$newKey] = (float) round(((int) $v) / 100, 2);
+            } elseif (is_array($v)) {
+                $out[$key] = $this->convertCentsToDollars($v);
+            } else {
+                $out[$key] = $v;
+            }
+        }
+
+        return $out;
     }
 }
