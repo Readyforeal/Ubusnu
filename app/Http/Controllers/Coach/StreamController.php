@@ -24,9 +24,15 @@ class StreamController extends Controller
         }
 
         return new StreamedResponse(function () use ($thread, $loop, $message) {
+            // Tell PHP to push to the wire after every echo. Combined with the
+            // X-Accel-Buffering header and FrankenPHP's default unbuffered
+            // behavior, this is enough to deliver NDJSON chunks live without
+            // touching Laravel's outer output buffer (which would error in
+            // tests).
+            ob_implicit_flush(true);
+
             foreach ($loop->run($thread, $message) as $event) {
                 echo json_encode($event)."\n";
-                ob_flush();
                 flush();
             }
         }, 200, [
