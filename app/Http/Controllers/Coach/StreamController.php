@@ -24,6 +24,10 @@ class StreamController extends Controller
         }
 
         return new StreamedResponse(function () use ($thread, $loop, $message) {
+            // Long tool-call chains can take more than the default 30s.
+            // Disable PHP's execution-time guard for this request only.
+            @set_time_limit(0);
+
             // Tell PHP to push to the wire after every echo. Combined with the
             // X-Accel-Buffering header and FrankenPHP's default unbuffered
             // behavior, this is enough to deliver NDJSON chunks live without

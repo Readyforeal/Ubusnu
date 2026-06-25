@@ -115,3 +115,28 @@ it('refuses write-kind tools in v1', function () {
     $toolMsg = $thread->messages()->where('role', 'tool')->first();
     expect($toolMsg->content)->toContain('write tools are not enabled');
 });
+
+it('persists partial content + error message when Ollama crashes mid-stream', function () {
+    $thread = ChatThread::factory()->create(['title' => 'New chat']);
+
+    $client = Mockery::mock(OllamaClient::class);
+    $client->shouldReceive('stream')->andReturnUsing(function () {
+        yield ['message' => ['content' => 'Looking '], 'done' => false];
+        yield ['message' => ['content' => 'at your data...'], 'done' => false];
+        throw new RuntimeException('connection reset');
+    });
+
+    $loop = new ChatLoop($client, new ToolRegistry, new CoachConfig);
+    $events = iterator_to_array($loop->run($thread, 'how am i doing'));
+
+    // Tokens stream out
+    expect(collect($events)->pluck('type'))->toContain('token');
+    // An error event is yielded at the end
+    expect(collect($events)->last()['type'])->toBe('error');
+    expect(collect($events)->last()['message'])->toContain('connection reset');
+
+    // Partial content + error suffix are persisted, not lost
+    $assistant = $thread->messages()->where('role', 'assistant')->first();
+    expect($assistant->content)->toContain('Looking at your data');
+    expect($assistant->content)->toContain('connection reset');
+});
