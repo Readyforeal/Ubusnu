@@ -69,7 +69,7 @@
             </x-slot:sidebar>
 
             {{-- The $slot goes here --}}
-            <x-slot:content class="{{ request()->routeIs('chat.index') ? 'p-0! sm:p-3!' : 'p-3! sm:p-0!' }}">
+            <x-slot:content class="{{ request()->routeIs('chat.index') ? 'p-0! sm:p-3!' : 'p-3! sm:p-3!' }}">
                 {{-- Extra bottom padding on mobile so the floating dock
                      doesn't cover the last items in the scroll area. --}}
                 <div class="h-full {{ request()->routeIs('chat.index') ? '' : 'pb-28' }} md:pb-0">
