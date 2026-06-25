@@ -59,7 +59,10 @@ class OllamaClient
 
         $url = $this->config->baseUrl().'/api/chat';
 
-        $response = Http::timeout(120)
+        // Tool-call rounds can be slow on a homelab; give Ollama plenty of
+        // headroom on individual requests. ChatLoop is bounded at maxRounds
+        // so it can't loop forever.
+        $response = Http::timeout(300)
             ->withOptions(['stream' => true])
             ->post($url, $body);
 

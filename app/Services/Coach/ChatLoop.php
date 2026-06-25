@@ -44,93 +44,115 @@ class ChatLoop
             $messages[] = ['role' => $m->role, 'content' => $m->content];
         }
 
-        for ($round = 0; $round < $maxRounds; $round++) {
-            $stream = $this->ollama->stream($messages, $tools);
+        try {
+            for ($round = 0; $round < $maxRounds; $round++) {
+                $stream = $this->ollama->stream($messages, $tools);
 
-            $roundContent = '';
-            $roundToolCalls = [];
+                $roundContent = '';
+                $roundToolCalls = [];
 
-            foreach ($stream as $chunk) {
-                $msg = $chunk['message'] ?? [];
-                if (isset($msg['content']) && $msg['content'] !== '') {
-                    $roundContent .= $msg['content'];
-                    yield ['type' => 'token', 'content' => $msg['content']];
-                }
-                if (! empty($msg['tool_calls'])) {
-                    foreach ($msg['tool_calls'] as $tc) {
-                        $roundToolCalls[] = $tc;
+                foreach ($stream as $chunk) {
+                    $msg = $chunk['message'] ?? [];
+                    if (isset($msg['content']) && $msg['content'] !== '') {
+                        $roundContent .= $msg['content'];
+                        // Also accumulate cumulatively so the catch handler can
+                        // persist whatever streamed before an error.
+                        $assistantBuffer .= $msg['content'];
+                        yield ['type' => 'token', 'content' => $msg['content']];
                     }
-                }
-                if ($chunk['done'] ?? false) {
-                    break;
-                }
-            }
-
-            if ($roundToolCalls === []) {
-                $assistantBuffer .= $roundContent;
-
-                // Defensive: small models often emit tool-call-shaped JSON as
-                // content text instead of using the proper tool_calls field.
-                // Detect and rewrite to a friendly message rather than show raw JSON.
-                if ($this->looksLikeToolCallJson($assistantBuffer)) {
-                    $assistantBuffer = $this->toolCallFallbackMessage();
-                }
-
-                ChatMessage::create([
-                    'chat_thread_id' => $thread->id,
-                    'role' => 'assistant',
-                    'content' => $assistantBuffer,
-                    'tool_calls' => $toolCallsRecord === [] ? null : $toolCallsRecord,
-                    'model' => $this->config->model(),
-                ]);
-                $thread->touchLastMessage();
-
-                return;
-            }
-
-            foreach ($roundToolCalls as $tc) {
-                $name = $tc['function']['name'] ?? '';
-                $args = $tc['function']['arguments'] ?? [];
-                $tool = $this->registry->find($name);
-
-                if (! $tool) {
-                    $resultJson = json_encode(['error' => "unknown tool: $name"]);
-                } elseif ($tool->kind === 'write') {
-                    $resultJson = json_encode(['error' => 'write tools are not enabled in v1']);
-                } else {
-                    try {
-                        $result = ($tool->handler)(is_array($args) ? $args : []);
-                        $resultJson = json_encode($result);
-                    } catch (\Throwable $e) {
-                        $resultJson = json_encode(['error' => $e->getMessage()]);
+                    if (! empty($msg['tool_calls'])) {
+                        foreach ($msg['tool_calls'] as $tc) {
+                            $roundToolCalls[] = $tc;
+                        }
+                    }
+                    if ($chunk['done'] ?? false) {
+                        break;
                     }
                 }
 
-                yield ['type' => 'tool_call', 'tool_name' => $name, 'summary' => mb_substr((string) $resultJson, 0, 200)];
+                if ($roundToolCalls === []) {
+                    // Defensive: small models often emit tool-call-shaped JSON as
+                    // content text instead of using the proper tool_calls field.
+                    // Detect and rewrite to a friendly message rather than show raw JSON.
+                    if ($this->looksLikeToolCallJson($assistantBuffer)) {
+                        $assistantBuffer = $this->toolCallFallbackMessage();
+                    }
 
-                $toolCallsRecord[] = [
-                    'name' => $name,
-                    'arguments' => $args,
-                    'result_summary_text' => mb_substr((string) $resultJson, 0, 200),
-                ];
+                    ChatMessage::create([
+                        'chat_thread_id' => $thread->id,
+                        'role' => 'assistant',
+                        'content' => $assistantBuffer,
+                        'tool_calls' => $toolCallsRecord === [] ? null : $toolCallsRecord,
+                        'model' => $this->config->model(),
+                    ]);
+                    $thread->touchLastMessage();
 
-                ChatMessage::create([
-                    'chat_thread_id' => $thread->id,
-                    'role' => 'tool',
-                    'content' => (string) $resultJson,
-                ]);
-                $messages[] = ['role' => 'tool', 'content' => (string) $resultJson];
+                    return;
+                }
+
+                foreach ($roundToolCalls as $tc) {
+                    $name = $tc['function']['name'] ?? '';
+                    $args = $tc['function']['arguments'] ?? [];
+                    $tool = $this->registry->find($name);
+
+                    if (! $tool) {
+                        $resultJson = json_encode(['error' => "unknown tool: $name"]);
+                    } elseif ($tool->kind === 'write') {
+                        $resultJson = json_encode(['error' => 'write tools are not enabled in v1']);
+                    } else {
+                        try {
+                            $result = ($tool->handler)(is_array($args) ? $args : []);
+                            $resultJson = json_encode($result);
+                        } catch (\Throwable $e) {
+                            $resultJson = json_encode(['error' => $e->getMessage()]);
+                        }
+                    }
+
+                    yield ['type' => 'tool_call', 'tool_name' => $name, 'summary' => mb_substr((string) $resultJson, 0, 200)];
+
+                    $toolCallsRecord[] = [
+                        'name' => $name,
+                        'arguments' => $args,
+                        'result_summary_text' => mb_substr((string) $resultJson, 0, 200),
+                    ];
+
+                    ChatMessage::create([
+                        'chat_thread_id' => $thread->id,
+                        'role' => 'tool',
+                        'content' => (string) $resultJson,
+                    ]);
+                    $messages[] = ['role' => 'tool', 'content' => (string) $resultJson];
+                }
             }
+
+            // Hit max rounds without a clean final assistant message.
+            ChatMessage::create([
+                'chat_thread_id' => $thread->id,
+                'role' => 'assistant',
+                'content' => $assistantBuffer !== '' ? $assistantBuffer : '(no response — max rounds reached)',
+                'tool_calls' => $toolCallsRecord === [] ? null : $toolCallsRecord,
+                'model' => $this->config->model(),
+            ]);
+            $thread->touchLastMessage();
+        } catch (\Throwable $e) {
+            // Persist whatever streamed before the failure so the user
+            // doesn't lose the partial response, and tell the client.
+            $errorSuffix = "\n\n_(error: ".mb_substr($e->getMessage(), 0, 200).')_';
+            $persistedContent = $assistantBuffer !== ''
+                ? $assistantBuffer.$errorSuffix
+                : trim($errorSuffix);
+
+            ChatMessage::create([
+                'chat_thread_id' => $thread->id,
+                'role' => 'assistant',
+                'content' => $persistedContent,
+                'tool_calls' => $toolCallsRecord === [] ? null : $toolCallsRecord,
+                'model' => $this->config->model(),
+            ]);
+            $thread->touchLastMessage();
+
+            yield ['type' => 'error', 'message' => $e->getMessage()];
         }
-
-        ChatMessage::create([
-            'chat_thread_id' => $thread->id,
-            'role' => 'assistant',
-            'content' => $assistantBuffer !== '' ? $assistantBuffer : '(no response — max rounds reached)',
-            'tool_calls' => $toolCallsRecord === [] ? null : $toolCallsRecord,
-            'model' => $this->config->model(),
-        ]);
-        $thread->touchLastMessage();
     }
 
     private function loadSystemPrompt(bool $useTools): string
