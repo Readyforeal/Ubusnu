@@ -18,6 +18,8 @@ new #[Title('Transactions')] class extends Component {
 
     public ?int $categoryFilter = null;
 
+    public bool $uncategorizedOnly = false;
+
     public string $search = '';
 
     public ?int $editingId = null;
@@ -30,6 +32,11 @@ new #[Title('Transactions')] class extends Component {
     }
 
     public function updatedCategoryFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedUncategorizedOnly(): void
     {
         $this->resetPage();
     }
@@ -71,7 +78,11 @@ new #[Title('Transactions')] class extends Component {
         return Transaction::query()
             ->with(['account', 'category'])
             ->when($this->accountFilter, fn ($q) => $q->where('account_id', $this->accountFilter))
-            ->when($this->categoryFilter, fn ($q) => $q->where('category_id', $this->categoryFilter))
+            ->when(
+                $this->uncategorizedOnly,
+                fn ($q) => $q->whereNull('category_id'),
+                fn ($q) => $q->when($this->categoryFilter, fn ($q) => $q->where('category_id', $this->categoryFilter))
+            )
             ->when($this->search, fn ($q) => $q->where('description', 'like', '%'.$this->search.'%'))
             ->orderByDesc('occurred_on')
             ->orderByDesc('id')
@@ -96,7 +107,11 @@ new #[Title('Transactions')] class extends Component {
     <div class="grid gap-3 md:grid-cols-3">
         <x-input placeholder="Search description…" wire:model.live.debounce.300ms="search" icon="lucide.search" />
         <x-select placeholder="All accounts" :options="$accounts" option-label="name" option-value="id" wire:model.live="accountFilter" />
-        <x-select placeholder="All categories" :options="$categories" option-label="name" option-value="id" wire:model.live="categoryFilter" />
+        <x-select placeholder="All categories" :options="$categories" option-label="name" option-value="id" wire:model.live="categoryFilter" :disabled="$uncategorizedOnly" />
+    </div>
+
+    <div class="flex items-center gap-2 text-sm">
+        <x-checkbox label="Uncategorized only" wire:model.live="uncategorizedOnly" />
     </div>
 
     @if ($creating || $editingId !== null)
