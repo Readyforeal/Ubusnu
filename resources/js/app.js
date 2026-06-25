@@ -34,6 +34,12 @@ document.addEventListener('alpine:init', () => {
             this.sending = true;
             const messageText = this.text;
             this.optimisticUserMessages.push({ id: Date.now(), text: messageText });
+            // Track whether we created the thread this turn so we can
+            // notify the parent AFTER streaming completes. Notifying
+            // immediately would trigger a Livewire re-render that changes
+            // the child's :key and re-mounts this Alpine instance mid-
+            // stream, orphaning the fetch reader and discarding tokens.
+            let createdNewThread = false;
             try {
                 this.text = '';
                 this.liveAssistant = '';
@@ -41,7 +47,6 @@ document.addEventListener('alpine:init', () => {
                 this.scrollToBottom();
 
                 const csrf = document.querySelector('meta[name="csrf-token"]').content;
-
                 if (!this.threadId) {
                     const r = await fetch('/chat/threads', {
                         method: 'POST',
@@ -55,7 +60,7 @@ document.addEventListener('alpine:init', () => {
                     const data = await r.json();
                     if (!data || !data.id) throw new Error('thread create returned no id');
                     this.threadId = data.id;
-                    this.$dispatch('thread-created', { id: this.threadId });
+                    createdNewThread = true;
                 }
 
                 const resp = await fetch('/chat/' + this.threadId + '/stream', {
@@ -100,11 +105,19 @@ document.addEventListener('alpine:init', () => {
             } finally {
                 this.sending = false;
                 this.liveToolCalls = [];
-                this.optimisticUserMessages = [];
-                // $wire is provided by Livewire on the surrounding element.
-                if (typeof this.$wire !== 'undefined') {
+                // Now that streaming is done, notify the parent if this was
+                // a brand-new thread. The parent will update its $threadId
+                // which causes this child to re-mount with the persisted
+                // conversation visible.
+                if (createdNewThread) {
+                    this.$dispatch('thread-created', { id: this.threadId });
+                } else if (typeof this.$wire !== 'undefined') {
+                    // Existing thread: just trigger a Livewire re-render to
+                    // pick up the new messages from the DB.
                     this.$wire.refreshMessages();
                 }
+                this.optimisticUserMessages = [];
+                this.liveAssistant = '';
                 this.scrollToBottom();
             }
         },
