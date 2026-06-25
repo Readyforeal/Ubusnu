@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ChatThread;
 use App\Services\Coach\CoachConfig;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
@@ -22,6 +23,18 @@ new #[Title('Coach')] class extends Component {
         $this->threadId = null;
     }
 
+    public function deleteThread(int $id): void
+    {
+        $thread = ChatThread::where('user_id', auth()->id())->find($id);
+        if (! $thread) {
+            return;
+        }
+        $thread->delete();
+        if ($this->threadId === $id) {
+            $this->threadId = null;
+        }
+    }
+
     #[On('thread-created')]
     public function onThreadCreated(int $id): void
     {
@@ -42,10 +55,21 @@ new #[Title('Coach')] class extends Component {
     <aside class="border border-base-300 rounded-lg p-3 overflow-y-auto">
         <x-button label="+ New chat" class="btn-primary btn-sm w-full mb-3" wire:click="newThread" />
         @forelse ($threads as $t)
-            <button type="button" wire:click="selectThread({{ $t->id }})" class="w-full text-left p-2 rounded text-sm hover:bg-base-200 {{ $threadId === $t->id ? 'bg-base-200' : '' }}">
-                <div class="font-medium truncate">{{ $t->title }}</div>
-                <div class="text-xs opacity-50">{{ $t->last_message_at?->diffForHumans() }}</div>
-            </button>
+            <div class="group flex items-center gap-1 p-1 rounded text-sm hover:bg-base-200 {{ $threadId === $t->id ? 'bg-base-200' : '' }}">
+                <button type="button" wire:click="selectThread({{ $t->id }})" class="flex-1 min-w-0 text-left">
+                    <div class="font-medium truncate">{{ $t->title }}</div>
+                    <div class="text-xs opacity-50">{{ $t->last_message_at?->diffForHumans() }}</div>
+                </button>
+                <button
+                    type="button"
+                    wire:click="deleteThread({{ $t->id }})"
+                    wire:confirm="Delete this conversation? This can't be undone."
+                    class="shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded text-error hover:bg-error/10"
+                    aria-label="Delete conversation"
+                >
+                    <x-icon name="lucide.trash-2" class="w-4 h-4" />
+                </button>
+            </div>
         @empty
             <p class="text-xs opacity-60 mt-2">No conversations yet.</p>
         @endforelse
