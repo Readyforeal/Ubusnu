@@ -135,7 +135,7 @@ Alpine.data('chatThread', (initialThreadId, initialPrompt) => ({
                 const data = await r.json();
                 if (!data || !data.id) throw new Error('thread create returned no id');
                 this.threadId = data.id;
-                this.$dispatch('thread-created', this.threadId);
+                this.$dispatch('thread-created', { id: this.threadId });
             }
 
             const url = '/chat/' + this.threadId + '/stream';
