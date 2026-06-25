@@ -55,6 +55,21 @@ new class extends Component {
             @endif
         @endforeach
 
+        <template x-for="msg in optimisticUserMessages" :key="msg.id">
+            <div class="flex justify-end">
+                <div class="max-w-prose bg-primary text-primary-content rounded-lg px-3 py-2 text-sm" x-text="msg.text"></div>
+            </div>
+        </template>
+
+        <template x-if="sending && liveAssistant === '' && liveToolCalls.length === 0">
+            <div class="flex justify-start">
+                <div class="max-w-prose bg-base-200 rounded-lg px-3 py-2 text-sm opacity-70 flex items-center gap-2">
+                    <span class="loading loading-dots loading-sm"></span>
+                    <span>Coach is thinking…</span>
+                </div>
+            </div>
+        </template>
+
         <template x-if="liveAssistant !== ''">
             <div class="flex justify-start">
                 <div class="max-w-prose bg-base-200 rounded-lg px-3 py-2 text-sm whitespace-pre-wrap" x-text="liveAssistant"></div>
@@ -87,6 +102,7 @@ Alpine.data('chatThread', (initialThreadId, initialPrompt) => ({
     sending: false,
     liveAssistant: '',
     liveToolCalls: [],
+    optimisticUserMessages: [],
     init() {
         this.scrollToBottom();
     },
@@ -100,10 +116,14 @@ Alpine.data('chatThread', (initialThreadId, initialPrompt) => ({
         if (! this.text.trim() || this.sending) return;
         this.sending = true;
         const messageText = this.text;
+        // Optimistically render the user message immediately so it doesn't
+        // feel like the send vanished into the void.
+        this.optimisticUserMessages.push({ id: Date.now(), text: messageText });
         try {
             this.text = '';
             this.liveAssistant = '';
             this.liveToolCalls = [];
+            this.scrollToBottom();
 
             if (! this.threadId) {
                 const r = await fetch('/chat/threads', { method: 'POST', headers: {
@@ -159,6 +179,9 @@ Alpine.data('chatThread', (initialThreadId, initialPrompt) => ({
         } finally {
             this.sending = false;
             this.liveToolCalls = [];
+            // Clear optimistic messages — Livewire is about to re-render
+            // the canonical message list from the DB.
+            this.optimisticUserMessages = [];
             $wire.refreshMessages();
             this.scrollToBottom();
         }
