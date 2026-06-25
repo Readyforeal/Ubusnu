@@ -73,32 +73,10 @@ class OllamaDriver implements CoachDriver
                     continue;
                 }
 
-                $msg = $decoded['message'] ?? [];
-                if (isset($msg['content']) && $msg['content'] !== '') {
-                    yield StreamChunk::text((string) $msg['content']);
-                }
-                if (! empty($msg['tool_calls'])) {
-                    foreach ($msg['tool_calls'] as $i => $tc) {
-                        $args = $tc['function']['arguments'] ?? [];
-                        yield StreamChunk::toolCall(
-                            id: (string) ($tc['id'] ?? "ollama-{$i}"),
-                            name: (string) ($tc['function']['name'] ?? ''),
-                            arguments: is_array($args) ? $args : [],
-                        );
-                    }
-                }
-                if (isset($decoded['prompt_eval_count'])) {
-                    $promptTokens = (int) $decoded['prompt_eval_count'];
-                }
-                if (isset($decoded['eval_count'])) {
-                    $completionTokens = (int) $decoded['eval_count'];
+                foreach ($this->chunksFromLine($decoded, $promptTokens, $completionTokens) as $chunk) {
+                    yield $chunk;
                 }
                 if ($decoded['done'] ?? false) {
-                    if ($promptTokens > 0 || $completionTokens > 0) {
-                        yield StreamChunk::usage($promptTokens, $completionTokens);
-                    }
-                    yield StreamChunk::done();
-
                     return;
                 }
             }
@@ -109,33 +87,44 @@ class OllamaDriver implements CoachDriver
         if ($line !== '') {
             $decoded = json_decode($line, true);
             if (is_array($decoded)) {
-                $msg = $decoded['message'] ?? [];
-                if (isset($msg['content']) && $msg['content'] !== '') {
-                    yield StreamChunk::text((string) $msg['content']);
-                }
-                if (! empty($msg['tool_calls'])) {
-                    foreach ($msg['tool_calls'] as $i => $tc) {
-                        $args = $tc['function']['arguments'] ?? [];
-                        yield StreamChunk::toolCall(
-                            id: (string) ($tc['id'] ?? "ollama-{$i}"),
-                            name: (string) ($tc['function']['name'] ?? ''),
-                            arguments: is_array($args) ? $args : [],
-                        );
-                    }
-                }
-                if (isset($decoded['prompt_eval_count'])) {
-                    $promptTokens = (int) $decoded['prompt_eval_count'];
-                }
-                if (isset($decoded['eval_count'])) {
-                    $completionTokens = (int) $decoded['eval_count'];
-                }
-                if ($decoded['done'] ?? false) {
-                    if ($promptTokens > 0 || $completionTokens > 0) {
-                        yield StreamChunk::usage($promptTokens, $completionTokens);
-                    }
-                    yield StreamChunk::done();
+                foreach ($this->chunksFromLine($decoded, $promptTokens, $completionTokens) as $chunk) {
+                    yield $chunk;
                 }
             }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $decoded
+     * @return \Generator<StreamChunk>
+     */
+    private function chunksFromLine(array $decoded, int &$promptTokens, int &$completionTokens): \Generator
+    {
+        $msg = $decoded['message'] ?? [];
+        if (isset($msg['content']) && $msg['content'] !== '') {
+            yield StreamChunk::text((string) $msg['content']);
+        }
+        if (! empty($msg['tool_calls'])) {
+            foreach ($msg['tool_calls'] as $i => $tc) {
+                $args = $tc['function']['arguments'] ?? [];
+                yield StreamChunk::toolCall(
+                    id: (string) ($tc['id'] ?? "ollama-{$i}"),
+                    name: (string) ($tc['function']['name'] ?? ''),
+                    arguments: is_array($args) ? $args : [],
+                );
+            }
+        }
+        if (isset($decoded['prompt_eval_count'])) {
+            $promptTokens = (int) $decoded['prompt_eval_count'];
+        }
+        if (isset($decoded['eval_count'])) {
+            $completionTokens = (int) $decoded['eval_count'];
+        }
+        if ($decoded['done'] ?? false) {
+            if ($promptTokens > 0 || $completionTokens > 0) {
+                yield StreamChunk::usage($promptTokens, $completionTokens);
+            }
+            yield StreamChunk::done();
         }
     }
 }
