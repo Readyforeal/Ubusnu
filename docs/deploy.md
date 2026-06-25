@@ -71,9 +71,22 @@ Then on the homelab, do a one-time login:
 docker login ghcr.io -u <your-user> -p <a PAT with read:packages>
 ```
 
+## Ollama model recommendations
+
+Configure the model at `/settings/coach` after deploy.
+
+- ✅ **`llama3.1:8b`** — minimum recommended. Reliable tool calling, knows when NOT to invoke tools, returns natural-language answers.
+- ❌ **`llama3.2:3b`** and similar small models — too small to handle the tool-calling API. They produce malformed JSON (`{}` or `{"name":"print",...}`) as content instead of real answers when tools are registered.
+
+Pull on the Ollama container:
+```bash
+docker exec <ollama-container> ollama pull llama3.1:8b
+```
+
 ## Troubleshooting
 
 - **`/up` returns 500** — check `docker compose logs ubusnu`. Most likely `.env` is missing `APP_KEY` or the data volume isn't writable.
 - **Migrations fail on boot** — the container won't start. Look at the logs to see which migration broke. To roll back: edit `compose.yml` and change the `image:` tag from `:latest` to `:sha-<previous-short-sha>` (you can find available tags at `https://github.com/<your-user>/ubusnu/pkgs/container/ubusnu`), then `docker compose pull && docker compose up -d`.
 - **Ollama unreachable** — verify `ollama-net` is shared, or change `OLLAMA_BASE_URL` to a Tailscale hostname.
+- **Chat returns garbage like `{}` or JSON tool-call text** — the model is too small for tool calling. Switch to `llama3.1:8b` or larger at `/settings/coach`.
 - **Disk filling up from backups** — drop `--keep` by overriding the schedule: edit `routes/console.php` and pass `->dailyAt('02:00')->arguments(['--keep' => '7'])` (or whatever count you want), then rebuild the image.
