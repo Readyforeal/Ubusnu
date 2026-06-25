@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
-#[Fillable(['monthly_income_target_cents', 'forecast_lookback_weeks', 'ollama_base_url', 'ollama_model'])]
+#[Fillable(['monthly_income_target_cents', 'forecast_lookback_weeks', 'ollama_base_url', 'ollama_model', 'coach_use_tools'])]
 class AppSetting extends Model
 {
     /** @use HasFactory<AppSettingFactory> */
@@ -19,6 +19,7 @@ class AppSetting extends Model
         return [
             'monthly_income_target_cents' => 'integer',
             'forecast_lookback_weeks' => 'integer',
+            'coach_use_tools' => 'boolean',
         ];
     }
 
