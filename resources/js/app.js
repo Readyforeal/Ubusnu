@@ -20,6 +20,11 @@ document.addEventListener('alpine:init', () => {
         liveAssistant: '',
         liveToolCalls: [],
         optimisticUserMessages: [],
+        // Typewriter state: incoming tokens land in pendingChars and get
+        // pumped into liveAssistant a few chars at a time so the user sees
+        // smooth character flow even when the server delivers in bursts.
+        pendingChars: '',
+        typewriterTimer: null,
         init() {
             this.scrollToBottom();
         },
@@ -28,6 +33,31 @@ document.addEventListener('alpine:init', () => {
                 const el = this.$refs.messages;
                 if (el) el.scrollTop = el.scrollHeight;
             });
+        },
+        startTypewriter() {
+            if (this.typewriterTimer) return;
+            this.typewriterTimer = setInterval(() => {
+                if (this.pendingChars.length === 0) return;
+                // Adaptive: emit ~3% of the backlog per tick, min 1 char.
+                // Keeps cadence smooth for slow streams and bounded latency
+                // for big bursts.
+                const chunk = Math.max(1, Math.floor(this.pendingChars.length / 30));
+                this.liveAssistant += this.pendingChars.slice(0, chunk);
+                this.pendingChars = this.pendingChars.slice(chunk);
+                this.scrollToBottom();
+            }, 18);
+        },
+        stopTypewriter() {
+            if (this.typewriterTimer) {
+                clearInterval(this.typewriterTimer);
+                this.typewriterTimer = null;
+            }
+        },
+        async drainTypewriter() {
+            while (this.pendingChars.length > 0) {
+                await new Promise((r) => setTimeout(r, 30));
+            }
+            this.stopTypewriter();
         },
         async send() {
             if (!this.text.trim() || this.sending) return;
@@ -89,8 +119,8 @@ document.addEventListener('alpine:init', () => {
                         try {
                             const event = JSON.parse(line);
                             if (event.type === 'token' && event.content) {
-                                this.liveAssistant += event.content;
-                                this.scrollToBottom();
+                                this.pendingChars += event.content;
+                                this.startTypewriter();
                             } else if (event.type === 'tool_call') {
                                 this.liveToolCalls.push({ id: this.liveToolCalls.length, name: event.tool_name });
                             }
@@ -105,17 +135,27 @@ document.addEventListener('alpine:init', () => {
             } finally {
                 this.sending = false;
                 this.liveToolCalls = [];
-                // Now that streaming is done, notify the parent if this was
-                // a brand-new thread. The parent will update its $threadId
-                // which causes this child to re-mount with the persisted
-                // conversation visible.
+
+                // Drain any buffered typewriter characters so the user sees
+                // the full reply before we clear the optimistic state.
+                await this.drainTypewriter();
+
+                // Refresh from the DB BEFORE clearing optimistic state so
+                // the canonical messages land in the DOM in the same morph
+                // — no blank flicker between Alpine clearing and Livewire
+                // catching up.
                 if (createdNewThread) {
+                    // Tells the parent index to set $threadId. The child has
+                    // a stable :key and Reactive threadId, so this is a
+                    // prop update, NOT a re-mount.
                     this.$dispatch('thread-created', { id: this.threadId });
+                    // Wait a couple frames for the Livewire round-trip + morph.
+                    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+                    await new Promise((r) => setTimeout(r, 50));
                 } else if (typeof this.$wire !== 'undefined') {
-                    // Existing thread: just trigger a Livewire re-render to
-                    // pick up the new messages from the DB.
-                    this.$wire.refreshMessages();
+                    await this.$wire.refreshMessages();
                 }
+
                 this.optimisticUserMessages = [];
                 this.liveAssistant = '';
                 this.scrollToBottom();

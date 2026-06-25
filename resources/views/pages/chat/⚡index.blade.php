@@ -61,7 +61,10 @@ new #[Title('Coach')] class extends Component {
                 </div>
             </div>
         @else
-            <livewire:pages::chat.thread :thread-id="$threadId" :initial-prompt="$initialPrompt" :key="'chat-thread-'.($threadId ?? 'new')" />
+            {{-- Stable :key so the child never re-mounts mid-stream. The
+                 reactive thread-id prop syncs new threadIds without
+                 destroying Alpine state. --}}
+            <livewire:pages::chat.thread :thread-id="$threadId" :initial-prompt="$initialPrompt" :key="'chat-thread-singleton'" />
         @endif
     </main>
 </div>

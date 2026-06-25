@@ -3,10 +3,13 @@
 use App\Models\ChatMessage;
 use App\Models\ChatThread;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Reactive;
 use Livewire\Component;
 
 new class extends Component {
+    #[Reactive]
     public ?int $threadId = null;
+
     public string $initialPrompt = '';
 
     public function mount(?int $threadId = null, string $initialPrompt = ''): void
