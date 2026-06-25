@@ -26,11 +26,11 @@ new class extends Component {
     @if (empty($this->insights))
         <p class="text-sm opacity-60">Nothing to flag right now. Keep importing transactions to surface patterns.</p>
     @else
-        <div class="grid gap-2 md:grid-cols-2">
+        <div class="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
             @foreach ($this->insights as $insight)
-                <a href="{{ $insight->suggestedPrompt ? route('chat.index', ['prompt' => $insight->suggestedPrompt]) : route('chat.index') }}" wire:navigate class="block p-3 rounded-lg border {{ $this->severityClasses($insight->severity) }} hover:opacity-90">
-                    <div class="text-sm font-semibold">{{ $insight->headline }}</div>
-                    <div class="text-xs opacity-70 mt-1">{{ $insight->detail }}</div>
+                <a href="{{ $insight->suggestedPrompt ? route('chat.index', ['prompt' => $insight->suggestedPrompt]) : route('chat.index') }}" wire:navigate class="flex flex-col aspect-square p-3 rounded-lg border {{ $this->severityClasses($insight->severity) }} hover:opacity-90 overflow-hidden">
+                    <div class="text-sm font-semibold leading-snug">{{ $insight->headline }}</div>
+                    <div class="text-xs opacity-70 mt-1 leading-snug line-clamp-4">{{ $insight->detail }}</div>
                 </a>
             @endforeach
         </div>

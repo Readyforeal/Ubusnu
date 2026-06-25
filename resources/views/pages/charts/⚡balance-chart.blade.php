@@ -185,7 +185,7 @@ new class extends Component {
 
                 out.colors = [c.primary];
 
-                out.stroke = { curve: 'stepline', width: 2, lineCap: 'round' };
+                out.stroke = { curve: 'smooth', width: 2, lineCap: 'round' };
 
                 out.fill = {
                     type: 'gradient',

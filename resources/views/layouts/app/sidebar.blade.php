@@ -20,7 +20,7 @@
         {{-- MAIN --}}
         <x-main full-width>
             {{-- SIDEBAR --}}
-            <x-slot:sidebar drawer="main-drawer" collapsible >
+            <x-slot:sidebar drawer="main-drawer" collapsible class="bg-base-100">
 
                 <div class="flex flex-col h-full">
                     {{-- BRAND --}}
