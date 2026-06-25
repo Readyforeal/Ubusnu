@@ -116,6 +116,51 @@ it('refuses write-kind tools in v1', function () {
     expect($toolMsg->content)->toContain('write tools are not enabled');
 });
 
+it('converts *_cents to *_dollars in tool results before sending to the model', function () {
+    $thread = ChatThread::factory()->create();
+    $registry = new ToolRegistry;
+    $registry->register(new CoachTool(
+        name: 'biggest_purchase',
+        description: 'biggest',
+        parameters: ['type' => 'object'],
+        kind: 'read',
+        requiresConfirmation: false,
+        handler: fn (array $args) => [
+            'description' => 'Walmart',
+            'amount_cents' => 33694,
+            'category_median_cents' => 5400,
+            'nested' => ['planned_cents' => 100000],
+        ],
+    ));
+
+    $client = Mockery::mock(OllamaClient::class);
+    $callCount = 0;
+    $client->shouldReceive('stream')->andReturnUsing(function () use (&$callCount) {
+        $callCount++;
+        if ($callCount === 1) {
+            return (function () {
+                yield ['message' => ['tool_calls' => [['function' => ['name' => 'biggest_purchase', 'arguments' => []]]]], 'done' => true];
+            })();
+        }
+
+        return (function () {
+            yield ['message' => ['content' => 'OK.'], 'done' => true];
+        })();
+    });
+
+    $loop = new ChatLoop($client, $registry, new CoachConfig);
+    iterator_to_array($loop->run($thread, 'show me'));
+
+    $toolMsg = $thread->messages()->where('role', 'tool')->first();
+    $payload = json_decode($toolMsg->content, true);
+
+    expect($payload)->toHaveKey('amount_dollars');
+    expect($payload['amount_dollars'])->toEqual(336.94);
+    expect($payload)->not->toHaveKey('amount_cents');
+    expect($payload['category_median_dollars'])->toEqual(54);
+    expect($payload['nested']['planned_dollars'])->toEqual(1000);
+});
+
 it('persists partial content + error message when Ollama crashes mid-stream', function () {
     $thread = ChatThread::factory()->create(['title' => 'New chat']);
 
