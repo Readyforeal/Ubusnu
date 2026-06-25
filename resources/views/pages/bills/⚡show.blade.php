@@ -56,6 +56,87 @@ new #[Title('Bill')] class extends Component {
         @endif
     </div>
 
+    @if ($bill->payment_url || $bill->username || $bill->password)
+        <x-card class="border border-base-300">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-sm font-semibold">{{ __('Login info') }}</h2>
+                @if ($bill->payment_url)
+                    <a
+                        href="{{ $bill->payment_url }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="btn btn-sm btn-primary gap-1"
+                    >
+                        <x-icon name="lucide.external-link" class="w-4 h-4" />
+                        {{ __('Open site') }}
+                    </a>
+                @endif
+            </div>
+
+            <div
+                x-data="{
+                    showPassword: false,
+                    copied: null,
+                    async copy(text, key) {
+                        if (! text) return;
+                        try {
+                            await navigator.clipboard.writeText(text);
+                            this.copied = key;
+                            setTimeout(() => { if (this.copied === key) this.copied = null; }, 1500);
+                        } catch (e) {}
+                    },
+                }"
+                class="grid gap-3 sm:grid-cols-2"
+            >
+                @if ($bill->username)
+                    <div>
+                        <div class="text-xs uppercase tracking-wide opacity-60 mb-1">{{ __('Username') }}</div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-mono text-sm break-all">{{ $bill->username }}</span>
+                            <button
+                                type="button"
+                                @click="copy(@js($bill->username), 'username')"
+                                class="btn btn-ghost btn-xs"
+                                :class="copied === 'username' ? 'text-success' : ''"
+                            >
+                                <x-icon name="lucide.copy" class="w-3.5 h-3.5" />
+                                <span x-show="copied !== 'username'">{{ __('Copy') }}</span>
+                                <span x-show="copied === 'username'" x-cloak>{{ __('Copied') }}</span>
+                            </button>
+                        </div>
+                    </div>
+                @endif
+
+                @if ($bill->password)
+                    <div>
+                        <div class="text-xs uppercase tracking-wide opacity-60 mb-1">{{ __('Password') }}</div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-mono text-sm break-all" x-show="showPassword" x-cloak>{{ $bill->password }}</span>
+                            <span class="font-mono text-sm" x-show="!showPassword">••••••••••••</span>
+                            <button
+                                type="button"
+                                @click="showPassword = !showPassword"
+                                class="btn btn-ghost btn-xs"
+                            >
+                                <x-icon ::name="showPassword ? 'lucide.eye-off' : 'lucide.eye'" class="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                                type="button"
+                                @click="copy(@js($bill->password), 'password')"
+                                class="btn btn-ghost btn-xs"
+                                :class="copied === 'password' ? 'text-success' : ''"
+                            >
+                                <x-icon name="lucide.copy" class="w-3.5 h-3.5" />
+                                <span x-show="copied !== 'password'">{{ __('Copy') }}</span>
+                                <span x-show="copied === 'password'" x-cloak>{{ __('Copied') }}</span>
+                            </button>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </x-card>
+    @endif
+
     @if (count($bill->manuallyMarkedPeriods()) > 0)
         <x-card class="border border-base-300">
             <h2 class="text-sm font-semibold mb-2">Manually-marked paid periods</h2>

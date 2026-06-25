@@ -3,25 +3,29 @@
 use App\Models\AppSetting;
 use App\Models\ChatThread;
 use App\Models\User;
-use App\Services\Coach\ChatLoop;
+use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
-    AppSetting::current()->update(['ollama_base_url' => 'http://homelab:11434']);
+    AppSetting::current()->update([
+        'coach_provider' => 'gemini',
+        'coach_model' => 'gemini-2.5-flash',
+        'gemini_api_key' => 'test-key',
+    ]);
     $this->actingAs(User::factory()->create());
 });
 
-it('streams NDJSON tokens from ChatLoop', function () {
+it('streams NDJSON tokens from the coach driver', function () {
     $thread = ChatThread::factory()->create(['user_id' => auth()->id()]);
 
-    $this->app->bind(ChatLoop::class, function () {
-        $mock = Mockery::mock(ChatLoop::class);
-        $mock->shouldReceive('run')->andReturn((function () {
-            yield ['type' => 'token', 'content' => 'hi'];
-            yield ['type' => 'token', 'content' => ' there'];
-        })());
-
-        return $mock;
-    });
+    Http::fake([
+        'generativelanguage.googleapis.com/*' => Http::response(implode("\n", [
+            'data: '.json_encode(['candidates' => [['content' => ['parts' => [['text' => 'hi']]]]]]),
+            'data: '.json_encode([
+                'candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => ' there']]]]],
+                'usageMetadata' => ['promptTokenCount' => 4, 'candidatesTokenCount' => 2],
+            ]),
+        ])),
+    ]);
 
     $response = $this->post(route('chat.stream', $thread), ['message' => 'hello']);
 
@@ -42,4 +46,11 @@ it('requires a non-empty message', function () {
     $thread = ChatThread::factory()->create(['user_id' => auth()->id()]);
 
     $this->post(route('chat.stream', $thread), ['message' => ''])->assertStatus(422);
+});
+
+it('returns 503 when not configured (no API key)', function () {
+    AppSetting::current()->update(['gemini_api_key' => null]);
+    $thread = ChatThread::factory()->create(['user_id' => auth()->id()]);
+
+    $this->post(route('chat.stream', $thread), ['message' => 'hi'])->assertStatus(503);
 });

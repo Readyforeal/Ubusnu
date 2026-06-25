@@ -6,13 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\ChatThread;
 use App\Services\Coach\ChatLoop;
 use App\Services\Coach\CoachConfig;
+use App\Services\Coach\ToolRegistry;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StreamController extends Controller
 {
-    public function stream(Request $request, ChatThread $thread, ChatLoop $loop, CoachConfig $config): Response
+    public function stream(Request $request, ChatThread $thread, CoachConfig $config, ToolRegistry $registry): Response
     {
         abort_unless($thread->user_id === $request->user()->id, 403);
 
@@ -23,16 +24,10 @@ class StreamController extends Controller
             return response()->json(['error' => 'Coach is not configured'], 503);
         }
 
-        return new StreamedResponse(function () use ($thread, $loop, $message) {
-            // Long tool-call chains can take more than the default 30s.
-            // Disable PHP's execution-time guard for this request only.
-            @set_time_limit(0);
+        $loop = new ChatLoop($config->driver(), $registry, $config);
 
-            // Tell PHP to push to the wire after every echo. Combined with the
-            // X-Accel-Buffering header and FrankenPHP's default unbuffered
-            // behavior, this is enough to deliver NDJSON chunks live without
-            // touching Laravel's outer output buffer (which would error in
-            // tests).
+        return new StreamedResponse(function () use ($thread, $loop, $message) {
+            @set_time_limit(0);
             ob_implicit_flush(true);
 
             foreach ($loop->run($thread, $message) as $event) {

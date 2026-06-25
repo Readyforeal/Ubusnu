@@ -8,15 +8,13 @@ use App\Models\ChatThread;
 class ChatLoop
 {
     public function __construct(
-        private readonly OllamaClient $ollama,
+        private readonly CoachDriver $driver,
         private readonly ToolRegistry $registry,
         private readonly CoachConfig $config,
     ) {}
 
     /**
-     * Run one full chat turn (user message → potentially multiple tool calls → final assistant message).
-     *
-     * @return \Generator<array{type: string, content?: string, tool_name?: string, summary?: string}>
+     * @return \Generator<array{type: string, content?: string, tool_name?: string, summary?: string, message?: string}>
      */
     public function run(ChatThread $thread, string $userMessage): \Generator
     {
@@ -33,11 +31,13 @@ class ChatLoop
 
         $useTools = $this->config->useTools();
         $systemPrompt = $this->loadSystemPrompt($useTools);
-        $tools = $useTools ? $this->registry->toOllamaToolsArray() : [];
+        $tools = $useTools ? $this->registry->all() : [];
 
         $maxRounds = 5;
         $toolCallsRecord = [];
         $assistantBuffer = '';
+        $inputTokens = 0;
+        $outputTokens = 0;
 
         $messages = [['role' => 'system', 'content' => $systemPrompt]];
         foreach ($thread->messages()->get() as $m) {
@@ -46,53 +46,38 @@ class ChatLoop
 
         try {
             for ($round = 0; $round < $maxRounds; $round++) {
-                $stream = $this->ollama->stream($messages, $tools);
-
-                $roundContent = '';
                 $roundToolCalls = [];
 
-                foreach ($stream as $chunk) {
-                    $msg = $chunk['message'] ?? [];
-                    if (isset($msg['content']) && $msg['content'] !== '') {
-                        $roundContent .= $msg['content'];
-                        // Also accumulate cumulatively so the catch handler can
-                        // persist whatever streamed before an error.
-                        $assistantBuffer .= $msg['content'];
-                        yield ['type' => 'token', 'content' => $msg['content']];
-                    }
-                    if (! empty($msg['tool_calls'])) {
-                        foreach ($msg['tool_calls'] as $tc) {
-                            $roundToolCalls[] = $tc;
-                        }
-                    }
-                    if ($chunk['done'] ?? false) {
+                foreach ($this->driver->stream($messages, $tools) as $chunk) {
+                    if ($chunk->type === 'text') {
+                        $assistantBuffer .= $chunk->payload['delta'];
+                        yield ['type' => 'token', 'content' => $chunk->payload['delta']];
+                    } elseif ($chunk->type === 'tool_call') {
+                        $roundToolCalls[] = $chunk->payload;
+                    } elseif ($chunk->type === 'usage') {
+                        $inputTokens += $chunk->payload['input_tokens'];
+                        $outputTokens += $chunk->payload['output_tokens'];
+                    } elseif ($chunk->type === 'error') {
+                        throw new \RuntimeException($chunk->payload['message']);
+                    } elseif ($chunk->type === 'done') {
                         break;
                     }
                 }
 
                 if ($roundToolCalls === []) {
-                    // Defensive: small models often emit tool-call-shaped JSON as
-                    // content text instead of using the proper tool_calls field.
-                    // Detect and rewrite to a friendly message rather than show raw JSON.
                     if ($this->looksLikeToolCallJson($assistantBuffer)) {
                         $assistantBuffer = $this->toolCallFallbackMessage();
                     }
 
-                    ChatMessage::create([
-                        'chat_thread_id' => $thread->id,
-                        'role' => 'assistant',
-                        'content' => $assistantBuffer,
-                        'tool_calls' => $toolCallsRecord === [] ? null : $toolCallsRecord,
-                        'model' => $this->config->model(),
-                    ]);
-                    $thread->touchLastMessage();
+                    $this->persistAssistant($thread, $assistantBuffer, $toolCallsRecord, $inputTokens, $outputTokens);
 
                     return;
                 }
 
                 foreach ($roundToolCalls as $tc) {
-                    $name = $tc['function']['name'] ?? '';
-                    $args = $tc['function']['arguments'] ?? [];
+                    $name = $tc['name'];
+                    $args = $tc['arguments'];
+                    $toolCallId = $tc['id'] ?? null;
                     $tool = $this->registry->find($name);
 
                     if (! $tool) {
@@ -102,9 +87,6 @@ class ChatLoop
                     } else {
                         try {
                             $result = ($tool->handler)(is_array($args) ? $args : []);
-                            // Convert internal *_cents fields to *_dollars before
-                            // handing to the model — small models read 33694 as
-                            // $33,694 instead of $336.94.
                             $resultJson = json_encode($this->convertCentsToDollars($result));
                         } catch (\Throwable $e) {
                             $resultJson = json_encode(['error' => $e->getMessage()]);
@@ -124,38 +106,43 @@ class ChatLoop
                         'role' => 'tool',
                         'content' => (string) $resultJson,
                     ]);
-                    $messages[] = ['role' => 'tool', 'content' => (string) $resultJson];
+                    $messages[] = ['role' => 'tool', 'content' => (string) $resultJson, 'tool_use_id' => $toolCallId];
                 }
             }
 
-            // Hit max rounds without a clean final assistant message.
-            ChatMessage::create([
-                'chat_thread_id' => $thread->id,
-                'role' => 'assistant',
-                'content' => $assistantBuffer !== '' ? $assistantBuffer : '(no response — max rounds reached)',
-                'tool_calls' => $toolCallsRecord === [] ? null : $toolCallsRecord,
-                'model' => $this->config->model(),
-            ]);
-            $thread->touchLastMessage();
+            $this->persistAssistant(
+                $thread,
+                $assistantBuffer !== '' ? $assistantBuffer : '(no response — max rounds reached)',
+                $toolCallsRecord,
+                $inputTokens,
+                $outputTokens,
+            );
         } catch (\Throwable $e) {
-            // Persist whatever streamed before the failure so the user
-            // doesn't lose the partial response, and tell the client.
             $errorSuffix = "\n\n_(error: ".mb_substr($e->getMessage(), 0, 200).')_';
-            $persistedContent = $assistantBuffer !== ''
-                ? $assistantBuffer.$errorSuffix
-                : trim($errorSuffix);
+            $persistedContent = $assistantBuffer !== '' ? $assistantBuffer.$errorSuffix : trim($errorSuffix);
 
-            ChatMessage::create([
-                'chat_thread_id' => $thread->id,
-                'role' => 'assistant',
-                'content' => $persistedContent,
-                'tool_calls' => $toolCallsRecord === [] ? null : $toolCallsRecord,
-                'model' => $this->config->model(),
-            ]);
-            $thread->touchLastMessage();
+            $this->persistAssistant($thread, $persistedContent, $toolCallsRecord, $inputTokens, $outputTokens);
 
             yield ['type' => 'error', 'message' => $e->getMessage()];
         }
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $toolCallsRecord
+     */
+    private function persistAssistant(ChatThread $thread, string $content, array $toolCallsRecord, int $inputTokens, int $outputTokens): void
+    {
+        ChatMessage::create([
+            'chat_thread_id' => $thread->id,
+            'role' => 'assistant',
+            'content' => $content,
+            'tool_calls' => $toolCallsRecord === [] ? null : $toolCallsRecord,
+            'model' => $this->config->model(),
+            'provider' => $this->driver->name(),
+            'input_tokens' => $inputTokens > 0 ? $inputTokens : null,
+            'output_tokens' => $outputTokens > 0 ? $outputTokens : null,
+        ]);
+        $thread->touchLastMessage();
     }
 
     private function loadSystemPrompt(bool $useTools): string
@@ -169,10 +156,6 @@ class ChatLoop
         return is_file($path) ? (string) file_get_contents($path) : 'You are a helpful financial coach.';
     }
 
-    /**
-     * True when the entire content is a single JSON object that looks like a
-     * tool-call attempt — e.g. {"name": "...", "parameters": {...}}.
-     */
     private function looksLikeToolCallJson(string $content): bool
     {
         $trimmed = trim($content);
@@ -189,14 +172,9 @@ class ChatLoop
 
     private function toolCallFallbackMessage(): string
     {
-        return "I tried to call an internal tool but couldn't produce a real answer. This usually means the model is too small for tool calling. Try a larger model (llama3.1:8b or bigger), or turn off tool calling in /settings/coach for general conversation.";
+        return "I tried to call an internal tool but couldn't produce a real answer. This usually means the model is too small for tool calling. Try a larger model, or turn off tool calling in /settings/coach for general conversation.";
     }
 
-    /**
-     * Recursively replace any `*_cents` integer fields with `*_dollars` floats
-     * so the model sees natural money values instead of an integer it may
-     * misread as dollars.
-     */
     private function convertCentsToDollars(mixed $value): mixed
     {
         if (! is_array($value)) {
@@ -207,9 +185,6 @@ class ChatLoop
         foreach ($value as $key => $v) {
             if (is_string($key) && str_ends_with($key, '_cents') && is_numeric($v)) {
                 $newKey = substr($key, 0, -6).'_dollars';
-                // Cast to float so the JSON has decimals even for round dollar
-                // amounts ($54 → 54.0), helping the model see this as a money
-                // value rather than an integer count.
                 $out[$newKey] = (float) round(((int) $v) / 100, 2);
             } elseif (is_array($v)) {
                 $out[$key] = $this->convertCentsToDollars($v);

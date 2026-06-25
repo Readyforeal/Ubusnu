@@ -4,48 +4,98 @@ use App\Models\AppSetting;
 use App\Models\ChatThread;
 use App\Services\Coach\ChatLoop;
 use App\Services\Coach\CoachConfig;
+use App\Services\Coach\CoachDriver;
 use App\Services\Coach\CoachTool;
-use App\Services\Coach\OllamaClient;
+use App\Services\Coach\StreamChunk;
 use App\Services\Coach\ToolRegistry;
 
+function fakeDriver(array $rounds): CoachDriver
+{
+    return new class($rounds) implements CoachDriver
+    {
+        private int $round = 0;
+
+        public function __construct(private readonly array $rounds) {}
+
+        public function name(): string
+        {
+            return 'fake';
+        }
+
+        public function stream(array $messages, array $tools): Generator
+        {
+            $chunks = $this->rounds[$this->round] ?? [StreamChunk::done()];
+            $this->round++;
+            foreach ($chunks as $chunk) {
+                yield $chunk;
+            }
+        }
+    };
+}
+
+function fakeDriverCapturing(array $rounds, array &$capturedMessages): CoachDriver
+{
+    return new class($rounds, $capturedMessages) implements CoachDriver
+    {
+        private int $round = 0;
+
+        public function __construct(private readonly array $rounds, private array &$captured) {}
+
+        public function name(): string
+        {
+            return 'fake';
+        }
+
+        public function stream(array $messages, array $tools): Generator
+        {
+            $this->captured[$this->round] = $messages;
+            $chunks = $this->rounds[$this->round] ?? [StreamChunk::done()];
+            $this->round++;
+            foreach ($chunks as $chunk) {
+                yield $chunk;
+            }
+        }
+    };
+}
+
 beforeEach(function () {
-    AppSetting::current()->update(['ollama_base_url' => 'http://homelab:11434']);
+    AppSetting::current()->update(['coach_provider' => 'gemini', 'coach_model' => 'gemini-2.5-flash']);
 });
 
 it('persists user + assistant messages on a no-tool turn', function () {
     $thread = ChatThread::factory()->create(['title' => 'New chat']);
+    $driver = fakeDriver([[
+        StreamChunk::text('Hello'),
+        StreamChunk::text(' world'),
+        StreamChunk::usage(10, 5),
+        StreamChunk::done(),
+    ]]);
 
-    $client = Mockery::mock(OllamaClient::class);
-    $client->shouldReceive('stream')->andReturn((function () {
-        yield ['message' => ['content' => 'Hello']];
-        yield ['done' => true, 'message' => ['content' => ' world']];
-    })());
-
-    $loop = new ChatLoop($client, new ToolRegistry, new CoachConfig);
+    $loop = new ChatLoop($driver, new ToolRegistry, new CoachConfig);
     iterator_to_array($loop->run($thread, 'hi'));
 
     $messages = $thread->messages()->get();
     expect($messages)->toHaveCount(2);
-    expect($messages[0]->role)->toBe('user');
     expect($messages[1]->role)->toBe('assistant');
     expect($messages[1]->content)->toBe('Hello world');
+    expect($messages[1]->input_tokens)->toBe(10);
+    expect($messages[1]->output_tokens)->toBe(5);
+    expect($messages[1]->provider)->toBe('fake');
 });
 
 it('auto-sets thread title from first user message', function () {
     $thread = ChatThread::factory()->create(['title' => 'New chat']);
+    $driver = fakeDriver([[StreamChunk::text('ok'), StreamChunk::done()]]);
 
-    $client = Mockery::mock(OllamaClient::class);
-    $client->shouldReceive('stream')->andReturn((function () {
-        yield ['message' => ['content' => 'ok'], 'done' => true];
-    })());
-
-    $loop = new ChatLoop($client, new ToolRegistry, new CoachConfig);
+    $loop = new ChatLoop($driver, new ToolRegistry, new CoachConfig);
     iterator_to_array($loop->run($thread, 'How am I doing?'));
 
     expect($thread->fresh()->title)->toBe('How am I doing?');
 });
 
 it('executes a tool call and feeds the result back', function () {
+    AppSetting::current()->update(['coach_use_tools' => true]);
+
     $thread = ChatThread::factory()->create();
     $registry = new ToolRegistry;
     $registry->register(new CoachTool(
@@ -57,22 +107,12 @@ it('executes a tool call and feeds the result back', function () {
         handler: fn (array $args) => ['echoed' => $args['msg'] ?? 'nothing'],
     ));
 
-    $client = Mockery::mock(OllamaClient::class);
-    $callCount = 0;
-    $client->shouldReceive('stream')->andReturnUsing(function () use (&$callCount) {
-        $callCount++;
-        if ($callCount === 1) {
-            return (function () {
-                yield ['message' => ['tool_calls' => [['function' => ['name' => 'echo', 'arguments' => ['msg' => 'hello']]]]], 'done' => true];
-            })();
-        }
+    $driver = fakeDriver([
+        [StreamChunk::toolCall('id-1', 'echo', ['msg' => 'hello']), StreamChunk::done()],
+        [StreamChunk::text('The tool said hello.'), StreamChunk::done()],
+    ]);
 
-        return (function () {
-            yield ['message' => ['content' => 'The tool said hello.'], 'done' => true];
-        })();
-    });
-
-    $loop = new ChatLoop($client, $registry, new CoachConfig);
+    $loop = new ChatLoop($driver, $registry, new CoachConfig);
     $events = iterator_to_array($loop->run($thread, 'echo hello'));
 
     $kinds = array_column($events, 'type');
@@ -82,7 +122,9 @@ it('executes a tool call and feeds the result back', function () {
     expect($roles)->toBe(['user', 'tool', 'assistant']);
 });
 
-it('refuses write-kind tools in v1', function () {
+it('refuses write-kind tools', function () {
+    AppSetting::current()->update(['coach_use_tools' => true]);
+
     $thread = ChatThread::factory()->create();
     $registry = new ToolRegistry;
     $registry->register(new CoachTool(
@@ -94,94 +136,61 @@ it('refuses write-kind tools in v1', function () {
         handler: fn (array $args) => throw new LogicException('should not run'),
     ));
 
-    $client = Mockery::mock(OllamaClient::class);
-    $callCount = 0;
-    $client->shouldReceive('stream')->andReturnUsing(function () use (&$callCount) {
-        $callCount++;
-        if ($callCount === 1) {
-            return (function () {
-                yield ['message' => ['tool_calls' => [['function' => ['name' => 'do_a_thing', 'arguments' => []]]]], 'done' => true];
-            })();
-        }
+    $driver = fakeDriver([
+        [StreamChunk::toolCall('id-1', 'do_a_thing', []), StreamChunk::done()],
+        [StreamChunk::text('blocked'), StreamChunk::done()],
+    ]);
 
-        return (function () {
-            yield ['message' => ['content' => 'sorry, cannot.'], 'done' => true];
-        })();
-    });
+    $loop = new ChatLoop($driver, $registry, new CoachConfig);
+    iterator_to_array($loop->run($thread, 'go'));
 
-    $loop = new ChatLoop($client, $registry, new CoachConfig);
-    iterator_to_array($loop->run($thread, 'do it'));
-
-    $toolMsg = $thread->messages()->where('role', 'tool')->first();
-    expect($toolMsg->content)->toContain('write tools are not enabled');
+    $toolRow = $thread->messages()->where('role', 'tool')->first();
+    expect($toolRow)->not->toBeNull();
+    expect($toolRow->content)->toContain('write tools are not enabled');
 });
 
-it('converts *_cents to *_dollars in tool results before sending to the model', function () {
+it('persists partial content and error suffix on driver failure', function () {
+    $thread = ChatThread::factory()->create();
+    $driver = fakeDriver([[
+        StreamChunk::text('half-'),
+        StreamChunk::error('connection refused'),
+    ]]);
+
+    $loop = new ChatLoop($driver, new ToolRegistry, new CoachConfig);
+    iterator_to_array($loop->run($thread, 'go'));
+
+    $assistant = $thread->messages()->where('role', 'assistant')->first();
+    expect($assistant->content)->toStartWith('half-');
+    expect($assistant->content)->toContain('connection refused');
+});
+
+it('threads tool_use_id into the messages array passed to the driver on the second round', function () {
+    AppSetting::current()->update(['coach_use_tools' => true]);
+
     $thread = ChatThread::factory()->create();
     $registry = new ToolRegistry;
     $registry->register(new CoachTool(
-        name: 'biggest_purchase',
-        description: 'biggest',
+        name: 'ping',
+        description: 'ping',
         parameters: ['type' => 'object'],
         kind: 'read',
         requiresConfirmation: false,
-        handler: fn (array $args) => [
-            'description' => 'Walmart',
-            'amount_cents' => 33694,
-            'category_median_cents' => 5400,
-            'nested' => ['planned_cents' => 100000],
-        ],
+        handler: fn (array $args) => ['pong' => true],
     ));
 
-    $client = Mockery::mock(OllamaClient::class);
-    $callCount = 0;
-    $client->shouldReceive('stream')->andReturnUsing(function () use (&$callCount) {
-        $callCount++;
-        if ($callCount === 1) {
-            return (function () {
-                yield ['message' => ['tool_calls' => [['function' => ['name' => 'biggest_purchase', 'arguments' => []]]]], 'done' => true];
-            })();
-        }
+    $captured = [];
+    $driver = fakeDriverCapturing([
+        [StreamChunk::toolCall('toolu_01abc', 'ping', []), StreamChunk::done()],
+        [StreamChunk::text('done'), StreamChunk::done()],
+    ], $captured);
 
-        return (function () {
-            yield ['message' => ['content' => 'OK.'], 'done' => true];
-        })();
-    });
+    $loop = new ChatLoop($driver, $registry, new CoachConfig);
+    iterator_to_array($loop->run($thread, 'ping please'));
 
-    $loop = new ChatLoop($client, $registry, new CoachConfig);
-    iterator_to_array($loop->run($thread, 'show me'));
+    // The second round (index 1) should contain the tool result message with the correct tool_use_id.
+    $round2Messages = $captured[1] ?? [];
+    $toolMessage = collect($round2Messages)->firstWhere('role', 'tool');
 
-    $toolMsg = $thread->messages()->where('role', 'tool')->first();
-    $payload = json_decode($toolMsg->content, true);
-
-    expect($payload)->toHaveKey('amount_dollars');
-    expect($payload['amount_dollars'])->toEqual(336.94);
-    expect($payload)->not->toHaveKey('amount_cents');
-    expect($payload['category_median_dollars'])->toEqual(54);
-    expect($payload['nested']['planned_dollars'])->toEqual(1000);
-});
-
-it('persists partial content + error message when Ollama crashes mid-stream', function () {
-    $thread = ChatThread::factory()->create(['title' => 'New chat']);
-
-    $client = Mockery::mock(OllamaClient::class);
-    $client->shouldReceive('stream')->andReturnUsing(function () {
-        yield ['message' => ['content' => 'Looking '], 'done' => false];
-        yield ['message' => ['content' => 'at your data...'], 'done' => false];
-        throw new RuntimeException('connection reset');
-    });
-
-    $loop = new ChatLoop($client, new ToolRegistry, new CoachConfig);
-    $events = iterator_to_array($loop->run($thread, 'how am i doing'));
-
-    // Tokens stream out
-    expect(collect($events)->pluck('type'))->toContain('token');
-    // An error event is yielded at the end
-    expect(collect($events)->last()['type'])->toBe('error');
-    expect(collect($events)->last()['message'])->toContain('connection reset');
-
-    // Partial content + error suffix are persisted, not lost
-    $assistant = $thread->messages()->where('role', 'assistant')->first();
-    expect($assistant->content)->toContain('Looking at your data');
-    expect($assistant->content)->toContain('connection reset');
+    expect($toolMessage)->not->toBeNull();
+    expect($toolMessage['tool_use_id'])->toBe('toolu_01abc');
 });

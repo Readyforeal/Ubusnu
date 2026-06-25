@@ -125,6 +125,11 @@ new #[Title('Bills')] class extends Component {
                             </div>
                         </div>
                         <div class="flex gap-1 shrink-0">
+                            @if (! empty($b['payment_url']))
+                                <a href="{{ $b['payment_url'] }}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm" title="Open payment site">
+                                    <x-icon name="lucide.external-link" class="w-4 h-4" />
+                                </a>
+                            @endif
                             <x-button icon="lucide.pencil" class="btn-ghost btn-sm" wire:click="startEdit({{ $b['id'] }})" />
                             <x-button icon="lucide.trash-2" class="btn-ghost btn-sm text-error" wire:click="deleteBill({{ $b['id'] }})" wire:confirm="Delete this bill?" />
                         </div>
