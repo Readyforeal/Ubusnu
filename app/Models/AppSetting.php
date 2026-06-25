@@ -8,7 +8,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
-#[Fillable(['monthly_income_target_cents', 'forecast_lookback_weeks', 'ollama_base_url', 'ollama_model', 'coach_use_tools'])]
+#[Fillable([
+    'monthly_income_target_cents', 'forecast_lookback_weeks',
+    'ollama_base_url', 'ollama_model', 'coach_use_tools',
+    'coach_provider', 'coach_model', 'gemini_api_key', 'anthropic_api_key',
+])]
 class AppSetting extends Model
 {
     /** @use HasFactory<AppSettingFactory> */
@@ -20,6 +24,8 @@ class AppSetting extends Model
             'monthly_income_target_cents' => 'integer',
             'forecast_lookback_weeks' => 'integer',
             'coach_use_tools' => 'boolean',
+            'gemini_api_key' => 'encrypted',
+            'anthropic_api_key' => 'encrypted',
         ];
     }
 
