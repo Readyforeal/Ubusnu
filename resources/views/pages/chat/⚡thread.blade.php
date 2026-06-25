@@ -36,8 +36,8 @@ new class extends Component {
     }
 }; ?>
 
-<div class="flex flex-col h-full" x-data="chatThread({{ $threadId ?? 'null' }}, @js($initialPrompt))" x-init="init()" wire:ignore.self>
-    <div class="flex-1 overflow-y-auto p-4 space-y-1" x-ref="messages">
+<div class="flex flex-col h-full relative" x-data="chatThread({{ $threadId ?? 'null' }}, @js($initialPrompt))" x-init="init()" wire:ignore.self>
+    <div class="flex-1 overflow-y-auto p-4 pt-20 pb-32 md:pt-4 space-y-1" x-ref="messages">
         @foreach ($this->messages as $msg)
             @if ($msg->role === 'user')
                 <div class="chat chat-end">
@@ -84,18 +84,21 @@ new class extends Component {
         </template>
     </div>
 
-    <div class="p-3">
-        <div class="relative rounded-lg backdrop-blur-lg bg-base-100/70 shadow-lg border border-base-300/40">
+    {{-- Composer overlays the bottom of the chat column. Absolute (not fixed)
+         so it's constrained to the parent's width instead of the viewport.
+         On mobile, sits above the floating dock; on desktop, near the bottom. --}}
+    <div class="absolute inset-x-3 bottom-22 md:bottom-6 z-10">
+        <div class="relative rounded-3xl backdrop-blur-lg bg-base-100/70 shadow-lg">
             <textarea
                 x-model="text"
                 x-ref="composer"
                 x-effect="text === '' && $refs.composer && ($refs.composer.style.height = 'auto')"
                 rows="1"
-                placeholder="Ask the coach..."
+                placeholder="Ask away!"
                 :disabled="sending"
                 @input="$el.style.height = 'auto'; $el.style.height = Math.min($el.scrollHeight, 200) + 'px'"
                 @keydown.enter.prevent="if (! $event.shiftKey) { send() }"
-                class="w-full bg-transparent border-0 focus:outline-none focus:ring-0 resize-none px-4 py-3 pr-14 text-sm leading-relaxed min-h-[3rem] max-h-[12rem]"
+                class="block w-full bg-transparent border-0 focus:outline-none focus:ring-0 resize-none px-4 py-3 pr-14 text-sm leading-relaxed min-h-[3rem] max-h-[12rem]"
             ></textarea>
             <button
                 type="button"

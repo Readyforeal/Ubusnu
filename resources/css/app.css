@@ -7,3 +7,44 @@
 @source '../views';
 @source '../../vendor/robsontenorio/mary/src/View/Components/**/*.php';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
+/* App shell: body fills the viewport; the inner drawer-content is the only
+   scroll container. Overrides MaryUI's x-main internals so nothing reaches
+   past 100dvh. */
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+body > main {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
+body > main > .drawer {
+    height: 100%;
+    min-height: 0;
+}
+
+body > main > .drawer > .drawer-content {
+    height: 100%;
+    overflow-y: auto;
+}
+
+/* MaryUI hardcodes h-screen on the sidebar inner div; clamp it to the
+   actual body height so it doesn't push past the viewport. */
+body > main > .drawer > .drawer-side > div {
+    height: 100% !important;
+    min-height: 0 !important;
+}
+
+/* On mobile, MaryUI sets .drawer-side to z-20 (below the dock's z-40),
+   which clips the bottom of the open navigation drawer behind the dock.
+   Raise it above the dock. lg:z-auto restores default at desktop where
+   the dock is hidden and the drawer participates in the grid. */
+@media (max-width: 1023px) {
+    body > main > .drawer > .drawer-side {
+        z-index: 50;
+    }
+}
