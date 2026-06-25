@@ -36,6 +36,14 @@ new class extends Component {
 
     public ?string $notes = null;
 
+    #[Validate('nullable|url|max:500')]
+    public ?string $paymentUrl = null;
+
+    #[Validate('nullable|string|max:255')]
+    public ?string $username = null;
+
+    public ?string $password = null;
+
     public function mount(int $billId): void
     {
         $this->billId = $billId;
@@ -51,6 +59,9 @@ new class extends Component {
             $this->matchDescription = $bill->match_description;
             $this->color = $bill->color;
             $this->notes = $bill->notes;
+            $this->paymentUrl = $bill->payment_url;
+            $this->username = $bill->username;
+            $this->password = $bill->password;
         }
     }
 
@@ -75,6 +86,9 @@ new class extends Component {
             'match_description' => $this->matchDescription,
             'color' => $this->color,
             'notes' => $this->notes,
+            'payment_url' => $this->paymentUrl ?: null,
+            'username' => $this->username ?: null,
+            'password' => $this->password !== '' ? $this->password : null,
         ];
 
         if ($this->billId > 0) {
@@ -120,6 +134,17 @@ new class extends Component {
         <x-input label="Color (hex)" wire:model="color" placeholder="#ef4444" />
         <x-textarea label="Notes" wire:model="notes" rows="2" class="md:col-span-2" />
     </div>
+
+    {{-- LOGIN INFO --}}
+    <div class="mt-5 pt-4 border-t border-base-300">
+        <div class="text-xs uppercase tracking-wide opacity-60 mb-3">Login info (optional)</div>
+        <div class="grid gap-3 md:grid-cols-2">
+            <x-input label="Payment URL" wire:model="paymentUrl" placeholder="https://" class="md:col-span-2" />
+            <x-input label="Username" wire:model="username" autocomplete="off" />
+            <x-input label="Password" wire:model="password" type="password" autocomplete="new-password" hint="Encrypted at rest with your APP_KEY." />
+        </div>
+    </div>
+
     <div class="flex gap-2 justify-end mt-4">
         <x-button label="Cancel" class="btn-ghost" wire:click="cancel" />
         <x-button label="Save" class="btn-primary" wire:click="saveBill" />

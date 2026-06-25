@@ -5,6 +5,7 @@ use App\Models\Bill;
 use App\Models\Category;
 use App\Models\Transaction;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 
 it('persists all bill attributes', function () {
     $bill = Bill::factory()->create([
@@ -177,4 +178,40 @@ it('nextDueDate for annual bill returns next year if date has passed', function 
     expect($bill->nextDueDate()->toDateString())->toBe('2027-11-01');
 
     CarbonImmutable::setTestNow();
+});
+
+it('stores payment_url and username in plain text', function () {
+    $bill = Bill::factory()->create([
+        'payment_url' => 'https://example.com/login',
+        'username' => 'jamie@example.com',
+    ]);
+
+    expect($bill->fresh()->payment_url)->toBe('https://example.com/login');
+    expect($bill->fresh()->username)->toBe('jamie@example.com');
+});
+
+it('encrypts password at rest and decrypts via the model accessor', function () {
+    $plain = 'super-secret-12345!';
+    $bill = Bill::factory()->create(['password' => $plain]);
+
+    // Accessor decrypts.
+    expect($bill->fresh()->password)->toBe($plain);
+
+    // Raw DB value does not contain plaintext.
+    $raw = DB::table('bills')->where('id', $bill->id)->value('password');
+    expect($raw)->not->toBeNull();
+    expect($raw)->not->toContain($plain);
+    expect(strlen($raw))->toBeGreaterThan(strlen($plain));
+});
+
+it('allows null credentials', function () {
+    $bill = Bill::factory()->create([
+        'payment_url' => null,
+        'username' => null,
+        'password' => null,
+    ]);
+
+    expect($bill->fresh()->payment_url)->toBeNull();
+    expect($bill->fresh()->username)->toBeNull();
+    expect($bill->fresh()->password)->toBeNull();
 });

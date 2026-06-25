@@ -57,6 +57,7 @@ class ComputeBillsStatus
                 'account_name' => $bill->account?->name,
                 'category_name' => $bill->category?->name,
                 'color' => $bill->color,
+                'payment_url' => $bill->payment_url,
             ];
 
             if ($isPaid) {

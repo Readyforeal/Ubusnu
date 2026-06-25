@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'expected_amount_cents', 'account_id', 'category_id',
     'match_description', 'manually_marked_paid_periods',
     'color', 'notes', 'sort_order',
+    'payment_url', 'username', 'password',
 ])]
 class Bill extends Model
 {
@@ -28,6 +29,9 @@ class Bill extends Model
             'due_month_of_year' => 'integer',
             'expected_amount_cents' => 'integer',
             'sort_order' => 'integer',
+            // Encrypts at write, decrypts at read using APP_KEY. The DB
+            // value is unreadable plaintext.
+            'password' => 'encrypted',
         ];
     }
 
