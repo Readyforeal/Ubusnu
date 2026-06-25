@@ -70,11 +70,43 @@
 
             {{-- The $slot goes here --}}
             <x-slot:content>
-                {{ $slot }}
+                {{-- Extra bottom padding on mobile so the floating dock
+                     doesn't cover the last items in the scroll area. --}}
+                <div class="pb-28 md:pb-0">
+                    {{ $slot }}
+                </div>
             </x-slot:content>
         </x-main>
 
         {{-- TOAST --}}
         <x-toast />
+
+        {{-- MOBILE BOTTOM DOCK (phone only — hidden md and up) --}}
+        <nav class="md:hidden fixed bottom-3 inset-x-3 z-50 rounded-2xl bg-base-100/70 backdrop-blur-lg shadow-lg p-3 flex justify-around items-center">
+            @php
+                $dockItems = [
+                    ['label' => __('Dashboard'), 'icon' => 'lucide.layout-dashboard', 'route' => 'dashboard'],
+                    ['label' => __('Transactions'), 'icon' => 'lucide.list', 'route' => 'transactions.index'],
+                    ['label' => __('Bills'), 'icon' => 'lucide.calendar-clock', 'route' => 'bills.*'],
+                    ['label' => __('Coach'), 'icon' => 'lucide.message-circle', 'route' => 'chat.index'],
+                ];
+            @endphp
+            @foreach ($dockItems as $item)
+                @php
+                    $href = str_contains($item['route'], '*')
+                        ? route(str_replace('*', 'index', $item['route']))
+                        : route($item['route']);
+                    $active = request()->routeIs($item['route']);
+                @endphp
+                <a
+                    href="{{ $href }}"
+                    wire:navigate
+                    class="flex-1 min-w-0 flex flex-col items-stretch gap-1 text-[11px] text-center {{ $active ? 'text-primary font-semibold' : 'opacity-70' }}"
+                >
+                    <x-icon name="{{ $item['icon'] }}" class="w-5 h-5 mx-auto" />
+                    <span class="truncate">{{ $item['label'] }}</span>
+                </a>
+            @endforeach
+        </nav>
     </body>
 </html>
