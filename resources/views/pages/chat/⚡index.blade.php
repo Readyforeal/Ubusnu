@@ -51,7 +51,7 @@ new #[Title('Coach')] class extends Component {
     }
 }; ?>
 
-<div class="grid grid-cols-[260px_1fr] gap-4 h-[calc(100vh-8rem)]">
+<div class="grid grid-cols-[260px_1fr] gap-4 h-full">
     <aside class="border border-base-300 rounded-lg p-3 overflow-y-auto">
         <x-button label="+ New chat" class="btn-primary btn-sm w-full mb-3" wire:click="newThread" />
         @forelse ($threads as $t)
@@ -75,13 +75,13 @@ new #[Title('Coach')] class extends Component {
         @endforelse
     </aside>
 
-    <main class="border border-base-300 rounded-lg overflow-hidden flex flex-col">
+    <main class="flex flex-col overflow-hidden">
         @if (! $isConfigured)
             <div class="flex-1 flex items-center justify-center p-8 text-center">
                 <div>
                     <h2 class="text-lg font-semibold">{{ "Coach isn't connected" }}</h2>
-                    <p class="opacity-70 text-sm mt-2">Configure your Ollama endpoint to start chatting.</p>
-                    <x-button label="Configure Ollama" link="{{ route('coach.edit') }}" class="btn-primary mt-4" wire:navigate />
+                    <p class="opacity-70 text-sm mt-2">Pick a provider and add an API key to start chatting.</p>
+                    <x-button label="Configure coach" link="{{ route('coach.edit') }}" class="btn-primary mt-4" wire:navigate />
                 </div>
             </div>
         @else

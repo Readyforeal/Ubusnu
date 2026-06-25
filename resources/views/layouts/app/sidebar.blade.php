@@ -72,7 +72,7 @@
             <x-slot:content>
                 {{-- Extra bottom padding on mobile so the floating dock
                      doesn't cover the last items in the scroll area. --}}
-                <div class="pb-28 md:pb-0">
+                <div class="h-full md:pb-0">
                     {{ $slot }}
                 </div>
             </x-slot:content>
