@@ -66,10 +66,17 @@ new class extends Component {
         </template>
     </div>
 
-    <form @submit.prevent="send" class="p-3 border-t border-base-300 flex gap-2">
-        <input type="text" x-model="text" placeholder="Ask the coach..." class="input input-bordered flex-1" :disabled="sending" />
-        <button type="submit" class="btn btn-primary" :disabled="sending || ! text.trim()" x-text="sending ? '…' : 'Send'"></button>
-    </form>
+    <div class="p-3 border-t border-base-300 flex gap-2">
+        <input
+            type="text"
+            x-model="text"
+            placeholder="Ask the coach..."
+            class="input input-bordered flex-1"
+            :disabled="sending"
+            @keydown.enter.prevent="send"
+        />
+        <button type="button" class="btn btn-primary" :disabled="sending || ! text.trim()" @click="send" x-text="sending ? '…' : 'Send'"></button>
+    </div>
 </div>
 
 @script
