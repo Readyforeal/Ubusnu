@@ -94,7 +94,7 @@ new class extends Component {
     }
 }; ?>
 
-<x-card class="border border-base-300 mb-4">
+<div>
     <div class="grid gap-3 md:grid-cols-2">
         <x-select label="Account" :options="$accounts" option-label="name" option-value="id" placeholder="Pick an account" wire:model="accountId" />
         <x-input type="date" label="Date" wire:model="occurredOn" />
@@ -108,4 +108,4 @@ new class extends Component {
         <x-button label="Cancel" class="btn-ghost" wire:click="cancel" />
         <x-button label="Save" class="btn-primary" wire:click="save" />
     </div>
-</x-card>
+</div>

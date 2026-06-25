@@ -102,7 +102,7 @@ new class extends Component {
     }
 }; ?>
 
-<x-card class="border border-base-300 mb-4">
+<div>
     <div class="grid gap-3 md:grid-cols-2">
         <x-input label="Name" wire:model="name" placeholder="Mortgage" class="md:col-span-2" />
         <x-radio label="Cadence" :options="[
@@ -124,4 +124,4 @@ new class extends Component {
         <x-button label="Cancel" class="btn-ghost" wire:click="cancel" />
         <x-button label="Save" class="btn-primary" wire:click="saveBill" />
     </div>
-</x-card>
+</div>

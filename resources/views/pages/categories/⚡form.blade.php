@@ -71,26 +71,24 @@ new class extends Component {
     }
 }; ?>
 
-<x-card class="border border-base-300 mb-4">
-    <div class="space-y-3">
-        <x-input label="Name" wire:model="name" />
+<div class="space-y-3">
+    <x-input label="Name" wire:model="name" />
 
-        <x-radio label="Kind" :options="[
-            ['id' => 'spending', 'name' => 'Spending'],
-            ['id' => 'income', 'name' => 'Income'],
-            ['id' => 'transfer', 'name' => 'Transfer'],
-        ]" wire:model.live="kind" />
+    <x-radio label="Kind" :options="[
+        ['id' => 'spending', 'name' => 'Spending'],
+        ['id' => 'income', 'name' => 'Income'],
+        ['id' => 'transfer', 'name' => 'Transfer'],
+    ]" wire:model.live="kind" />
 
-        @if ($kind === 'spending')
-            <x-select label="Bucket" :options="$buckets" option-label="name" option-value="id" placeholder="Unassigned" wire:model="bucketId" />
-        @endif
+    @if ($kind === 'spending')
+        <x-select label="Bucket" :options="$buckets" option-label="name" option-value="id" placeholder="Unassigned" wire:model="bucketId" />
+    @endif
 
-        <x-input label="Keywords (comma-separated)" wire:model="keywords" placeholder="safeway, save-on, walmart" />
-        <x-input label="Color (hex)" wire:model="color" placeholder="#aabbcc" />
+    <x-input label="Keywords (comma-separated)" wire:model="keywords" placeholder="safeway, save-on, walmart" />
+    <x-input label="Color (hex)" wire:model="color" placeholder="#aabbcc" />
 
-        <div class="flex gap-2 justify-end">
-            <x-button label="Cancel" class="btn-ghost" wire:click="cancel" />
-            <x-button label="Save" class="btn-primary" wire:click="save" />
-        </div>
+    <div class="flex gap-2 justify-end pt-2">
+        <x-button label="Cancel" class="btn-ghost" wire:click="cancel" />
+        <x-button label="Save" class="btn-primary" wire:click="save" />
     </div>
-</x-card>
+</div>

@@ -21,9 +21,19 @@ new #[Title('Budget')] class extends Component {
         $this->incomeTargetDollars = number_format($cents / 100, 2, '.', '');
     }
 
+    public bool $formOpen = false;
+
     public function startEdit(int $id): void
     {
         $this->editingId = $id;
+        $this->formOpen = true;
+    }
+
+    public function updatedFormOpen(bool $value): void
+    {
+        if (! $value) {
+            $this->editingId = null;
+        }
     }
 
     public function deleteBucket(int $id): void
@@ -42,6 +52,7 @@ new #[Title('Budget')] class extends Component {
     #[On('bucket-cancelled')]
     public function closeForm(): void
     {
+        $this->formOpen = false;
         $this->editingId = null;
     }
 
@@ -83,9 +94,11 @@ new #[Title('Budget')] class extends Component {
         </div>
     </x-card>
 
-    @if ($editingId !== null)
-        <livewire:pages::buckets.form :bucket-id="$editingId" :key="'bucket-form-'.$editingId" />
-    @endif
+    <x-modal wire:model="formOpen" :title="$editingId > 0 ? 'Edit bucket' : 'New bucket'">
+        @if ($editingId !== null)
+            <livewire:pages::buckets.form :bucket-id="$editingId" :key="'bucket-form-'.$editingId" />
+        @endif
+    </x-modal>
 
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         @foreach ($this->buckets as $bucket)
