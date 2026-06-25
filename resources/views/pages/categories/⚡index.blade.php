@@ -14,15 +14,26 @@ new #[Title('Categories')] class extends Component {
 
     public ?int $editingId = null;
 
+    public bool $formOpen = false;
+
     public function startEdit(int $id): void
     {
         $this->editingId = $id;
+        $this->formOpen = true;
+    }
+
+    public function updatedFormOpen(bool $value): void
+    {
+        if (! $value) {
+            $this->editingId = null;
+        }
     }
 
     #[On('category-saved')]
     #[On('category-cancelled')]
     public function closeForm(): void
     {
+        $this->formOpen = false;
         $this->editingId = null;
     }
 
@@ -51,9 +62,11 @@ new #[Title('Categories')] class extends Component {
         </div>
     </div>
 
-    @if ($editingId !== null)
-        <livewire:pages::categories.form :category-id="$editingId" :key="'cat-form-'.$editingId" />
-    @endif
+    <x-modal wire:model="formOpen" :title="$editingId > 0 ? 'Edit category' : 'New category'" box-class="max-w-2xl">
+        @if ($editingId !== null)
+            <livewire:pages::categories.form :category-id="$editingId" :key="'cat-form-'.$editingId" />
+        @endif
+    </x-modal>
 
     <x-table :headers="[
         ['key' => 'name', 'label' => 'Name'],

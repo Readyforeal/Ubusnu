@@ -11,9 +11,19 @@ use Livewire\Component;
 new #[Title('Goals')] class extends Component {
     public ?int $editingId = null;
 
+    public bool $formOpen = false;
+
     public function startEdit(int $id): void
     {
         $this->editingId = $id;
+        $this->formOpen = true;
+    }
+
+    public function updatedFormOpen(bool $value): void
+    {
+        if (! $value) {
+            $this->editingId = null;
+        }
     }
 
     public function deleteGoal(int $id): void
@@ -26,6 +36,7 @@ new #[Title('Goals')] class extends Component {
     #[On('goal-cancelled')]
     public function closeForm(): void
     {
+        $this->formOpen = false;
         $this->editingId = null;
     }
 
@@ -56,9 +67,11 @@ new #[Title('Goals')] class extends Component {
         </div>
     </x-card>
 
-    @if ($editingId !== null)
-        <livewire:pages::goals.form :goal-id="$editingId" :key="'goal-form-'.$editingId" />
-    @endif
+    <x-modal wire:model="formOpen" :title="$editingId > 0 ? 'Edit goal' : 'New goal'">
+        @if ($editingId !== null)
+            <livewire:pages::goals.form :goal-id="$editingId" :key="'goal-form-'.$editingId" />
+        @endif
+    </x-modal>
 
     @if (empty($this->status['goals']))
         <x-card class="border border-base-300 text-center opacity-70">

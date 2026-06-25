@@ -26,6 +26,8 @@ new #[Title('Transactions')] class extends Component {
 
     public bool $creating = false;
 
+    public bool $formOpen = false;
+
     public function updatedAccountFilter(): void
     {
         $this->resetPage();
@@ -50,12 +52,22 @@ new #[Title('Transactions')] class extends Component {
     {
         $this->creating = true;
         $this->editingId = null;
+        $this->formOpen = true;
     }
 
     public function startEdit(int $id): void
     {
         $this->editingId = $id;
         $this->creating = false;
+        $this->formOpen = true;
+    }
+
+    public function updatedFormOpen(bool $value): void
+    {
+        if (! $value) {
+            $this->editingId = null;
+            $this->creating = false;
+        }
     }
 
     public function deleteTransaction(int $id): void
@@ -68,6 +80,7 @@ new #[Title('Transactions')] class extends Component {
     #[On('transaction-cancelled')]
     public function closeForm(): void
     {
+        $this->formOpen = false;
         $this->editingId = null;
         $this->creating = false;
     }
@@ -114,9 +127,11 @@ new #[Title('Transactions')] class extends Component {
         <x-checkbox label="Uncategorized only" wire:model.live="uncategorizedOnly" />
     </div>
 
-    @if ($creating || $editingId !== null)
-        <livewire:pages::transactions.form :transaction-id="$editingId ?? 0" :key="'tx-form-'.($editingId ?? 'new')" />
-    @endif
+    <x-modal wire:model="formOpen" :title="$editingId > 0 ? 'Edit transaction' : 'New transaction'" box-class="max-w-2xl">
+        @if ($creating || $editingId !== null)
+            <livewire:pages::transactions.form :transaction-id="$editingId ?? 0" :key="'tx-form-'.($editingId ?? 'new')" />
+        @endif
+    </x-modal>
 
     <x-table :headers="[
         ['key' => 'occurred_on', 'label' => 'Date'],

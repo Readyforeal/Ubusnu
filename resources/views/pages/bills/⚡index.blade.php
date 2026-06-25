@@ -17,9 +17,19 @@ new #[Title('Bills')] class extends Component {
 
     public ?int $editingId = null;
 
+    public bool $formOpen = false;
+
     public function startEdit(int $id): void
     {
         $this->editingId = $id;
+        $this->formOpen = true;
+    }
+
+    public function updatedFormOpen(bool $value): void
+    {
+        if (! $value) {
+            $this->editingId = null;
+        }
     }
 
     public function deleteBill(int $id): void
@@ -51,6 +61,7 @@ new #[Title('Bills')] class extends Component {
     #[On('bill-cancelled')]
     public function closeForm(): void
     {
+        $this->formOpen = false;
         $this->editingId = null;
     }
 
@@ -83,9 +94,11 @@ new #[Title('Bills')] class extends Component {
         </div>
     </x-card>
 
-    @if ($editingId !== null)
-        <livewire:pages::bills.form :bill-id="$editingId" :key="'bill-form-'.$editingId" />
-    @endif
+    <x-modal wire:model="formOpen" :title="$editingId > 0 ? 'Edit bill' : 'New bill'" box-class="max-w-2xl">
+        @if ($editingId !== null)
+            <livewire:pages::bills.form :bill-id="$editingId" :key="'bill-form-'.$editingId" />
+        @endif
+    </x-modal>
 
     @if (empty($this->status['bills']))
         <x-card class="border border-base-300 text-center opacity-70">

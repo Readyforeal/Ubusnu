@@ -69,16 +69,14 @@ new class extends Component {
     }
 }; ?>
 
-<x-card class="border border-base-300 mb-4">
-    <div class="space-y-3">
-        <x-input label="Name" wire:model="name" placeholder="Camera" />
-        <x-input label="Target ($)" wire:model="targetDollars" placeholder="1500.00" />
-        <x-input type="number" label="Priority %" wire:model="priorityPercentage" min="0" max="100" hint="0-100, share of the savings pool allocated to this goal" />
-        <x-input label="Color (hex)" wire:model="color" placeholder="#3b82f6" />
-        <x-textarea label="Notes" wire:model="notes" rows="2" />
-        <div class="flex gap-2 justify-end">
-            <x-button label="Cancel" class="btn-ghost" wire:click="cancel" />
-            <x-button label="Save" class="btn-primary" wire:click="saveGoal" />
-        </div>
+<div class="space-y-3">
+    <x-input label="Name" wire:model="name" placeholder="Camera" />
+    <x-input label="Target ($)" wire:model="targetDollars" placeholder="1500.00" />
+    <x-input type="number" label="Priority %" wire:model="priorityPercentage" min="0" max="100" hint="0-100, share of the savings pool allocated to this goal" />
+    <x-input label="Color (hex)" wire:model="color" placeholder="#3b82f6" />
+    <x-textarea label="Notes" wire:model="notes" rows="2" />
+    <div class="flex gap-2 justify-end pt-2">
+        <x-button label="Cancel" class="btn-ghost" wire:click="cancel" />
+        <x-button label="Save" class="btn-primary" wire:click="saveGoal" />
     </div>
-</x-card>
+</div>

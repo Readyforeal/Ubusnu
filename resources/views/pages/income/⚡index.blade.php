@@ -9,9 +9,19 @@ use Livewire\Component;
 new #[Title('Income')] class extends Component {
     public ?int $editingId = null;
 
+    public bool $formOpen = false;
+
     public function startEdit(int $id): void
     {
         $this->editingId = $id;
+        $this->formOpen = true;
+    }
+
+    public function updatedFormOpen(bool $value): void
+    {
+        if (! $value) {
+            $this->editingId = null;
+        }
     }
 
     public function deleteSource(int $id): void
@@ -24,6 +34,7 @@ new #[Title('Income')] class extends Component {
     #[On('income-cancelled')]
     public function closeForm(): void
     {
+        $this->formOpen = false;
         $this->editingId = null;
     }
 
@@ -41,9 +52,11 @@ new #[Title('Income')] class extends Component {
         <x-button label="New income" icon="lucide.plus" class="btn-primary" wire:click="startEdit(0)" />
     </div>
 
-    @if ($editingId !== null)
-        <livewire:pages::income.form :source-id="$editingId" :key="'income-form-'.$editingId" />
-    @endif
+    <x-modal wire:model="formOpen" :title="$editingId > 0 ? 'Edit income source' : 'New income source'" box-class="max-w-2xl">
+        @if ($editingId !== null)
+            <livewire:pages::income.form :source-id="$editingId" :key="'income-form-'.$editingId" />
+        @endif
+    </x-modal>
 
     @if ($sources->isEmpty())
         <x-card class="border border-base-300 text-center opacity-70">

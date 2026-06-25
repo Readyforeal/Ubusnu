@@ -11,15 +11,28 @@ use Livewire\Component;
 new #[Title('Accounts')] class extends Component {
     public ?int $editingId = null;
 
+    public bool $formOpen = false;
+
     public function startEdit(int $id): void
     {
         $this->editingId = $id;
+        $this->formOpen = true;
+    }
+
+    public function updatedFormOpen(bool $value): void
+    {
+        // Reset editingId when the modal closes via the X / backdrop / Esc
+        // so the next open starts in a known state.
+        if (! $value) {
+            $this->editingId = null;
+        }
     }
 
     #[On('account-saved')]
     #[On('account-cancelled')]
     public function closeForm(): void
     {
+        $this->formOpen = false;
         $this->editingId = null;
     }
 
@@ -50,9 +63,11 @@ new #[Title('Accounts')] class extends Component {
         <x-button label="New account" icon="lucide.plus" class="btn-primary" wire:click="startEdit(0)" />
     </div>
 
-    @if ($editingId !== null)
-        <livewire:pages::accounts.form :account-id="$editingId" :key="'acct-form-'.$editingId" />
-    @endif
+    <x-modal wire:model="formOpen" :title="$editingId > 0 ? 'Edit account' : 'New account'">
+        @if ($editingId !== null)
+            <livewire:pages::accounts.form :account-id="$editingId" :key="'acct-form-'.$editingId" />
+        @endif
+    </x-modal>
 
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         @foreach ($this->accounts as $row)

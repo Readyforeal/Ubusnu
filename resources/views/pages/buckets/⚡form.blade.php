@@ -52,14 +52,12 @@ new class extends Component {
     }
 }; ?>
 
-<x-card class="border border-base-300 mb-4">
-    <div class="space-y-3">
-        <x-input label="Name" wire:model="name" placeholder="Essentials" />
-        <x-input type="number" label="Target percentage" wire:model="targetPercentage" min="0" max="100" hint="0-100, percentage of monthly income" />
-        <x-input label="Color (hex)" wire:model="color" placeholder="#22c55e" />
-        <div class="flex gap-2 justify-end">
-            <x-button label="Cancel" class="btn-ghost" wire:click="cancel" />
-            <x-button label="Save" class="btn-primary" wire:click="saveBucket" />
-        </div>
+<div class="space-y-3">
+    <x-input label="Name" wire:model="name" placeholder="Essentials" />
+    <x-input type="number" label="Target percentage" wire:model="targetPercentage" min="0" max="100" hint="0-100, percentage of monthly income" />
+    <x-input label="Color (hex)" wire:model="color" placeholder="#22c55e" />
+    <div class="flex gap-2 justify-end pt-2">
+        <x-button label="Cancel" class="btn-ghost" wire:click="cancel" />
+        <x-button label="Save" class="btn-primary" wire:click="saveBucket" />
     </div>
-</x-card>
+</div>
